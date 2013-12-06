@@ -3,16 +3,17 @@ require_relative 'process_monitor'
 module Salemove
   module ProcessHandler
     class PivotProcess
-      def initialize(messenger, opts = {})
+      def initialize(messenger, threads_count: 1, process_monitor: ProcessMonitor.new)
         @messenger = messenger
-        @threads_count = opts.fetch(:threads_count, 1)
+        @threads_count = threads_count
+        @process_monitor = process_monitor
       end
 
       def spawn(service)
-        process_monitor = ProcessMonitor.run
+        @process_monitor.start
 
         (1..@threads_count).map {
-          ServiceSpawner.spawn(process_monitor, service, @messenger)
+          ServiceSpawner.spawn(@process_monitor, service, @messenger)
         }.each(&:join)
       end
 

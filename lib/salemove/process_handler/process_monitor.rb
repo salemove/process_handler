@@ -1,27 +1,18 @@
 module Salemove
   module ProcessHandler
     class ProcessMonitor
-      def self.run
-        monitor = new
-        monitor.init_signal_handlers
-        monitor.run
-        monitor
-      end
-
-      def init_signal_handlers
-        init_hup_signal
-        init_quit_signal
-        init_int_signal
-        init_term_signal
-      end
-
       def spawn
         identifier = rand(10000)
         Thread.new { yield(identifier) }
       end
 
-      def run
+      def start
+        init_signal_handlers
         @running = true
+      end
+
+      def stop
+        @running = false
       end
 
       def running?
@@ -29,6 +20,13 @@ module Salemove
       end
 
       private
+
+      def init_signal_handlers
+        init_hup_signal
+        init_quit_signal
+        init_int_signal
+        init_term_signal
+      end
 
       # Many daemons will reload their configuration files and reopen their
       # logfiles instead of exiting when receiving this signal.
@@ -42,7 +40,7 @@ module Salemove
       def init_int_signal
         trap :INT do
           puts 'Exiting process gracefully!'
-          @running = false
+          stop
         end
       end
 
