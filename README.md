@@ -1,4 +1,7 @@
 # ProcessHandler
+
+[![Code Climate](https://codeclimate.com/repos/52a5fa01c7f3a371ec000eb9/badges/bccf2752f4f1f145d0b1/gpa.png)](https://codeclimate.com/repos/52a5fa01c7f3a371ec000eb9/feed)
+
 ProcessHandler helps to spawn and manage services. There are multiple types of processes. Every process knows how to handle `SIGINT` and `SIGTERM` signals.
 
 ## PivotProcess
