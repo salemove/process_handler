@@ -17,19 +17,7 @@ Example of using pivot process:
 ```
 
 ### Messenger
-Every messenger must respond to `#process` method that gives a block if there is an available message to process. If there isn't a message, then nothing should be returned.
-
-Example of a mock messenger:
-```ruby
-  class Messenger
-    def process(queue_name)
-      if rand(2) == 1
-        result = yield({text: rand(100).to_s})
-        # do something with result
-      end
-    end
-  end
-```
+See `Salemove::ProcessHandler::MockMessenger` for sample implementation. This is compatible with [Freddy](https://github.com/salemove/freddy).
 
 ### Service
 If you want to use pivot process, then the given service must implement `call` method that takes `input` as an argument.
