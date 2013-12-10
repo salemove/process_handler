@@ -10,8 +10,7 @@ module Salemove
       class Consumer
         def start(&block)
           @running = true
-
-          Thread.new do
+          @thread = Thread.new do
             while @running
               responder = Responder.new
               block.call({text: rand(100).to_s}, responder)
@@ -21,6 +20,10 @@ module Salemove
 
         def cancel
           @running = false
+        end
+
+        def join
+          @thread.join
         end
       end
 

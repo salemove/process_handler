@@ -1,25 +1,12 @@
-require_relative 'thread_handler'
-
 module Salemove
   module ProcessHandler
     class ProcessMonitor
-      def initialize
-        @threads = []
-      end
-
-      def spawn(&block)
-        thread = ThreadHandler.handle(&block)
-        @threads << thread
-        thread
-      end
-
       def start
         init_signal_handlers
         @running = true
       end
 
       def stop
-        @threads.each(&:stop)
         @running = false
       end
 
