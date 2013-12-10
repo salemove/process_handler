@@ -1,9 +1,16 @@
+require_relative 'thread_handler'
+
 module Salemove
   module ProcessHandler
     class ProcessMonitor
-      def spawn
-        identifier = rand(10000)
-        Thread.new { yield(identifier) }
+      def initialize
+        @threads = []
+      end
+
+      def spawn(&block)
+        thread = ThreadHandler.handle(&block)
+        @threads << thread
+        thread
       end
 
       def start
@@ -12,6 +19,7 @@ module Salemove
       end
 
       def stop
+        @threads.each(&:stop)
         @running = false
       end
 

@@ -29,26 +29,31 @@ module Salemove
         end
 
         def spawn
-          @process_monitor.spawn do |identifier|
-            start(identifier)
+          @process_monitor.spawn do |thread_handler|
+            start(thread_handler)
           end
         end
 
-        def start(identifier)
-          while @process_monitor.running?
-            unless process(identifier)
-              sleep 1
-            end
-          end
+        private
 
-          puts "Exiting thread ##{identifier}"
+        def start(thread_handler)
+          responder_handler = process(thread_handler)
+          thread_handler.on_stop_signal { responder_handler.cancel }
+
+          sleep 1 until thread_handler.stopped?
+
+          puts "Exiting thread ##{thread_handler.identifier}"
         end
 
-        def process(identifier)
-          @messenger.process(@service.class) do |input|
+        def process(thread_handler)
+          @messenger.respond_to(@service.class::QUEUE) do |input, handler|
+            thread_handler.mark_as_processing
+
             result = @service.call(input)
-            puts "Process ##{identifier}: #{result.inspect}"
-            result
+            puts "Process ##{thread_handler.identifier}: #{result.inspect}"
+            handler.ack(result)
+
+            thread_handler.mark_as_idle
           end
         end
       end

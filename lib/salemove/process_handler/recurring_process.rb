@@ -22,9 +22,7 @@ module Salemove
       private
 
       def relax
-        @refractory_period.times do |i|
-          sleep 1
-        end
+        @refractory_period.times { sleep 1 }
       end
     end
   end
