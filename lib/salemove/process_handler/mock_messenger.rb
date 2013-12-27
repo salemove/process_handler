@@ -18,7 +18,7 @@ module Salemove
           end
         end
 
-        def cancel
+        def shutdown
           @running = false
         end
 
