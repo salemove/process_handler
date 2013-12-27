@@ -18,7 +18,7 @@ module Salemove
 
         sleep 1 while @process_monitor.running?
 
-        threads.each(&:cancel)
+        threads.each(&:shutdown)
         threads.each(&:join)
       end
 
