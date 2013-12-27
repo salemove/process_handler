@@ -12,14 +12,13 @@ module Salemove
       def spawn(service)
         @process_monitor.start
 
-        threads = (1..@threads_count).map {
+        responders = (1..@threads_count).map {
           ServiceSpawner.spawn(@process_monitor, service, @messenger)
         }
 
         sleep 1 while @process_monitor.running?
 
-        threads.each(&:cancel)
-        threads.each(&:join)
+        responders.each(&:cancel)
       end
 
       class ServiceSpawner
