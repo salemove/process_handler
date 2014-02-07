@@ -45,8 +45,29 @@ Example of using recurring process:
   process.spawn(service)
 ```
 
+## CronProcess
+This process is similar to RecurringProcess, except instead of running every fixed number of second, accepts a [cron expression](http://en.wikipedia.org/wiki/Cron#CRON_expression) or interval String: "1" for seconds, "2h" for hours and "2d" for days.
+
+Example of using cron process with cron expressions:
+```ruby
+  service = MyService.new
+
+  # every five minutes between 7:00 and 7:55 on Mon to Fri
+  process = Salemove::ProcessHandler::CronProcess.new('0/5 7  * * 1-5')
+  process.spawn(service)
+```
+
+Example of using cron process with interval expressions:
+```ruby
+  service = MyService.new
+
+  # every second hour
+  process = Salemove::ProcessHandler::CronProcess.new('2h')
+  process.spawn(service)
+```
+
 ## Service
-If you want to use recurring process, then you only must implement `call` method that does not take any arguments.
+If you want to use recurring process or cron process, then you only must implement `call` method that does not take any arguments.
 
 Example of a service:
 ```ruby
