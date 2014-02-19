@@ -5,21 +5,26 @@ module Salemove
   module ProcessHandler
     class CronProcess
 
-      # @param [String] expression 
+      # @param [String] expression
       #   can either be a any cron expression like every five minutes: '5 * * * *'
       #   or interval like '1' for seconds, '2h' for hours and '2d' for days
-      # @param [Boolean] join 
+      # @param [Boolean] join
       #   whether to block the main thread while scheduler is running (similarily to RecurringProcess)
-      def initialize(expression, join: true)
-        @expression = expression
+      def initialize(join: true)
         @join = join
+        @spawned_any = false
         @scheduler = Rufus::Scheduler.new
       end
 
-      def spawn(service)
+      def spawn(expression, service)
+        @spawned_any = true
         CronProcessMonitor.new(self).start
-        @scheduler.repeat @expression, service
+        @scheduler.repeat expression, service
         @scheduler.join if @join
+      end
+
+      def join
+        @scheduler.join if @spawned_any
       end
 
       def stop

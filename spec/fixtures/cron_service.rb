@@ -1,6 +1,6 @@
 require 'salemove/process_handler/cron_process'
 
-module Salemove 
+module Salemove
 
   class EchoResultService
     def call
@@ -8,6 +8,6 @@ module Salemove
     end
   end
 
-  ProcessHandler::CronProcess.new('1').spawn(EchoResultService.new)
+  ProcessHandler::CronProcess.new.spawn('1', EchoResultService.new)
 
 end
