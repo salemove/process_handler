@@ -8,19 +8,18 @@ module Salemove
       # @param [String] expression
       #   can either be a any cron expression like every five minutes: '5 * * * *'
       #   or interval like '1' for seconds, '2h' for hours and '2d' for days
-      # @param [Boolean] join
-      #   whether to block the main thread while scheduler is running (similarily to RecurringProcess)
-      def initialize(join: true)
-        @join = join
+      def initialize
         @spawned_any = false
         @scheduler = Rufus::Scheduler.new
       end
 
+      def start_monitor
+        CronProcessMonitor.new(self).start
+      end
+
       def spawn(expression, service)
         @spawned_any = true
-        CronProcessMonitor.new(self).start
         @scheduler.repeat expression, service
-        @scheduler.join if @join
       end
 
       def join
