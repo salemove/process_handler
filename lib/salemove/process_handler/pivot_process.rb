@@ -1,9 +1,20 @@
+require 'logger'
 require_relative 'process_monitor'
 
 module Salemove
   module ProcessHandler
     class PivotProcess
-      def initialize(messenger, threads_count: 1, process_monitor: ProcessMonitor.new)
+
+      def self.logger
+        @logger ||= Logger.new(STDOUT).tap { |l| l.level = Logger::INFO }
+      end
+
+      def self.logger=(logger)
+        @logger = logger
+      end
+
+      def initialize(messenger, threads_count: 1, 
+                     process_monitor: ProcessMonitor.new)
         @messenger = messenger
         @threads_count = threads_count
         @process_monitor = process_monitor
@@ -36,7 +47,7 @@ module Salemove
         def spawn
           @messenger.respond_to(@service.class::QUEUE) do |input, handler|
             result = @service.call(input)
-            puts "Result: #{result.inspect}"
+            PivotProcess.logger.info "Result: #{result.inspect}"
             handler.ack(result)
           end
         end
