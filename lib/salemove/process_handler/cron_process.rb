@@ -17,9 +17,15 @@ module Salemove
         CronProcessMonitor.new(self).start
       end
 
-      def spawn(expression, service)
+      def spawn(expression, service, params=nil)
         @spawned_any = true
-        @scheduler.repeat expression, service
+        if params.nil?
+          @scheduler.repeat expression, service
+        else
+          @scheduler.repeat expression do
+            service.call(params)
+          end
+        end
       end
 
       def join
