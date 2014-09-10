@@ -9,8 +9,7 @@ module Salemove
   end
 
   cron_process = ProcessHandler::CronProcess.new
-  cron_process.spawn('1', EchoResultService.new)
-  cron_process.start_monitor
-  cron_process.join
+  cron_process.schedule('0.5')
+  cron_process.spawn(EchoResultService.new, blocking: true)
 
 end
