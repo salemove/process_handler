@@ -3,7 +3,6 @@ require 'spec_helper'
 require 'salemove/process_handler/pivot_process'
 
 class ResultService 
-
   QUEUE = 'Dummy'
 
   def call(input)
@@ -21,6 +20,7 @@ describe ProcessHandler::PivotProcess do
     before do
       expect(monitor).to receive(:start)
       expect(monitor).to receive(:running?).and_return false
+      expect(monitor).to receive(:shutdown)
 
       expect(messenger).to receive(:respond_to) do |destination, &callback|
         callback.call(nil, handler)

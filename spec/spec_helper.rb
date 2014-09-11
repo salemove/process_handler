@@ -12,11 +12,11 @@ RSpec.configure do
     File.join(File.dirname(__FILE__), "fixtures", name)
   end
 
-  def run_and_signal_fixture(fixture, signal)
+  def run_and_signal_fixture(fixture:, signal:, sleep_period:)
     output_read, output_write = IO.pipe
 
     pid = Process.spawn('ruby ' + fixture_path(fixture), out: output_write)
-    sleep 1.5
+    sleep sleep_period
     Process.kill(signal, pid)
     Process.wait2(pid)
     output_write.close

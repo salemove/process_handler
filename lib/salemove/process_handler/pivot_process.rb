@@ -5,6 +5,8 @@ module Salemove
   module ProcessHandler
     class PivotProcess
 
+      attr_reader :process_monitor
+
       def self.logger
         @logger ||= Logger.new(STDOUT).tap { |l| l.level = Logger::INFO }
       end
@@ -13,24 +15,29 @@ module Salemove
         @logger = logger
       end
 
-      def initialize(messenger, threads_count: 1, 
+      def initialize(messenger, threads_count: 1,
                      process_monitor: ProcessMonitor.new)
         @messenger = messenger
         @threads_count = threads_count
         @process_monitor = process_monitor
       end
 
-      def spawn(service)
+      def spawn(service, blocking: true)
         @process_monitor.start
 
-        threads = (1..@threads_count).map {
+        @threads = (1..@threads_count).map do
           ServiceSpawner.spawn(@process_monitor, service, @messenger)
-        }
+        end
+        blocking ? wait_for_monitor : Thread.new { wait_for_monitor }
+      end
 
+      private
+
+      def wait_for_monitor
         sleep 1 while @process_monitor.running?
-
-        threads.each(&:shutdown)
-        threads.each(&:join)
+        @threads.each(&:shutdown)
+        @threads.each(&:join)
+        @process_monitor.shutdown
       end
 
       class ServiceSpawner

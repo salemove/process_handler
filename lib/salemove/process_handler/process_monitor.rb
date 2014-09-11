@@ -3,15 +3,23 @@ module Salemove
     class ProcessMonitor
       def start
         init_signal_handlers
-        @running = true
+        @state = :running
       end
 
       def stop
-        @running = false
+        @state = :stopping
+      end
+
+      def shutdown
+        @state = :stopped
       end
 
       def running?
-        !!@running
+        @state == :running
+      end
+
+      def alive?
+        @state != :stopped
       end
 
       private
