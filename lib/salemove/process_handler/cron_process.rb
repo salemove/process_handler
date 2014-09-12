@@ -7,17 +7,17 @@ module Salemove
 
       attr_reader :process_monitor
 
-      def initialize
+      def initialize(scheduler_options={})
         @schedules = []
-        @scheduler = Rufus::Scheduler.new
+        @scheduler = Rufus::Scheduler.new scheduler_options
         @process_monitor = CronProcessMonitor.new(self)
       end
 
       # @param [String] expression
       #   can either be a any cron expression like every five minutes: '5 * * * *'
       #   or interval like '1' for seconds, '2h' for hours and '2d' for days
-      def schedule(expression, params={})
-        @schedules << { expression: expression, params: params } 
+      def schedule(expression, params={}, overlap=false)
+        @schedules << { expression: expression, params: params, overlap: overlap }
       end
 
       def spawn(service, blocking: true)
@@ -28,13 +28,11 @@ module Salemove
         @scheduler.join if blocking
       end
 
-      def spawn_schedule(service, expression:, params:)
+      def spawn_schedule(service, expression:, params:, overlap:)
         if params.empty?
-          @scheduler.repeat expression, service
+          @scheduler.repeat expression, {overlap: overlap} { service.call }
         else
-          @scheduler.repeat expression do
-            service.call(params)
-          end
+          @scheduler.repeat expression, {overlap: overlap} { service.call(params) }
         end
       end
 
