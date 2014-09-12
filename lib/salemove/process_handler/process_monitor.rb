@@ -7,7 +7,7 @@ module Salemove
       end
 
       def stop
-        @state = :stopping
+        @state = :stopping if alive?
       end
 
       def shutdown
