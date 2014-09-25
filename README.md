@@ -1,7 +1,6 @@
 # ProcessHandler
 
-[![Build Status](http://ci.salemove.com/buildStatus/icon?job=process_handler)](http://ci.salemove.com/job/process_handler/)
-[![Code Climate](https://codeclimate.com/repos/52a5fa01c7f3a371ec000eb9/badges/bccf2752f4f1f145d0b1/gpa.png)](https://codeclimate.com/repos/52a5fa01c7f3a371ec000eb9/feed)
+[![Code Climate](https://codeclimate.com/github/salemove/process_handler/badges/gpa.svg)](https://codeclimate.com/github/salemove/process_handler)
 
 ProcessHandler helps to spawn and manage services. There are multiple types of processes. Every process knows how to handle `SIGINT` and `SIGTERM` signals.
 
