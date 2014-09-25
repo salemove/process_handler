@@ -53,9 +53,13 @@ module Salemove
 
         def spawn
           @messenger.respond_to(@service.class::QUEUE) do |input, handler|
-            result = @service.call(input)
-            PivotProcess.logger.info "Result: #{result.inspect}"
-            handler.ack(result)
+            if input.has_key?(:ping)
+              handler.ack( {success: true, pong: 'pong' } )
+            else
+              result = @service.call(input)
+              PivotProcess.logger.info "Result: #{result.inspect}"
+              handler.ack(result)
+            end
           end
         end
       end
