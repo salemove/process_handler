@@ -1,5 +1,6 @@
 require 'logger'
 require_relative 'process_monitor'
+require_relative 'notifier_factory'
 
 module Salemove
   module ProcessHandler
@@ -15,19 +16,20 @@ module Salemove
         @logger = logger
       end
 
-      def initialize(messenger, threads_count: 1,
+      def initialize(messenger,
+                     env: 'development',
+                     notifier: nil,
+                     notifier_factory: NotifierFactory,
                      process_monitor: ProcessMonitor.new)
         @messenger = messenger
-        @threads_count = threads_count
         @process_monitor = process_monitor
+        @exception_notifier = notifier_factory.get_notifier(env, notifier)
       end
 
-      def spawn(service, blocking: true, exception_notifier: nil)
+      def spawn(service, blocking: true)
         @process_monitor.start
 
-        @threads = (1..@threads_count).map do
-          ServiceSpawner.spawn(service, @messenger, exception_notifier)
-        end
+        @service_thread = ServiceSpawner.spawn(service, @messenger, @exception_notifier)
         blocking ? wait_for_monitor : Thread.new { wait_for_monitor }
       end
 
@@ -35,8 +37,8 @@ module Salemove
 
       def wait_for_monitor
         sleep 1 while @process_monitor.running?
-        @threads.each(&:shutdown)
-        @threads.each(&:join)
+        @service_thread.shutdown
+        @service_thread.join
         @process_monitor.shutdown
       end
 
