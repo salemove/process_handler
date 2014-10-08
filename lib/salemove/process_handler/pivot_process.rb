@@ -22,11 +22,11 @@ module Salemove
         @process_monitor = process_monitor
       end
 
-      def spawn(service, blocking: true)
+      def spawn(service, blocking: true, exception_notifier: nil)
         @process_monitor.start
 
         @threads = (1..@threads_count).map do
-          ServiceSpawner.spawn(@process_monitor, service, @messenger)
+          ServiceSpawner.spawn(service, @messenger, exception_notifier)
         end
         blocking ? wait_for_monitor : Thread.new { wait_for_monitor }
       end
@@ -41,26 +41,44 @@ module Salemove
       end
 
       class ServiceSpawner
-        def self.spawn(process_monitor, service, messenger)
-          new(process_monitor, service, messenger).spawn
+        def self.spawn(service, messenger, exception_notifier)
+          new(service, messenger, exception_notifier).spawn
         end
 
-        def initialize(process_monitor, service, messenger)
-          @process_monitor = process_monitor
+        def initialize(service, messenger, exception_notifier)
           @service = service
           @messenger = messenger
+          @exception_notifier = exception_notifier
         end
 
         def spawn
           @messenger.respond_to(@service.class::QUEUE) do |input, handler|
-            if input.has_key?(:ping)
-              handler.ack( {success: true, pong: 'pong' } )
-            else
-              result = @service.call(input)
-              PivotProcess.logger.info "Result: #{result.inspect}"
-              handler.ack(result)
-            end
+            handler.ack handle_request(input)
           end
+        end
+
+        def handle_request(input)
+          if input.has_key?(:ping)
+            { success: true, pong: 'pong' }
+          else
+            delegate_to_service(input)
+          end
+        rescue => exception
+          handle_exception(exception, input)
+        end
+
+        def delegate_to_service(input)
+          result = @service.call(input)
+          PivotProcess.logger.info "Result: #{result.inspect}"
+          result
+        end
+
+        def handle_exception(e, input)
+          PivotProcess.logger.error(e.inspect + "\n" + e.backtrace.join("\n"))
+          if @exception_notifier
+            @exception_notifier.notify_or_ignore(e, cgi_data: ENV.to_hash, parameters: input)
+          end
+          { success: false, error: e.message }
         end
       end
     end
