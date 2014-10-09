@@ -2,13 +2,22 @@ PATH
   remote: .
   specs:
     process_handler (0.0.1)
+      airbrake
+      sucker_punch (~> 1.1)
 
 GEM
   remote: https://rubygems.org/
   specs:
+    airbrake (4.1.0)
+      builder
+      multi_json
+    builder (3.2.2)
+    celluloid (0.15.2)
+      timers (~> 1.1.0)
     coderay (1.1.0)
     diff-lcs (1.2.5)
     method_source (0.8.2)
+    multi_json (1.10.1)
     pry (0.9.12.6)
       coderay (~> 1.0)
       method_source (~> 0.8)
@@ -29,7 +38,10 @@ GEM
     rufus-scheduler (3.0.9)
       tzinfo
     slop (3.4.7)
+    sucker_punch (1.2.1)
+      celluloid (~> 0.15.2)
     thread_safe (0.3.4)
+    timers (1.1.0)
     tzinfo (1.2.2)
       thread_safe (~> 0.1)
 

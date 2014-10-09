@@ -2,7 +2,6 @@ require 'salemove/process_handler'
 require 'salemove/process_handler/composite_process'
 require 'salemove/process_handler/cron_process'
 require 'salemove/process_handler/pivot_process'
-require 'salemove/process_handler/process_monitor'
 
 module Salemove
 

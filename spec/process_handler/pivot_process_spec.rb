@@ -13,8 +13,12 @@ describe ProcessHandler::PivotProcess do
   let(:thread)    { double('Thread') }
 
   subject { process.spawn(service) }
-  let(:process) { ProcessHandler::PivotProcess.new(messenger, process_monitor: monitor) }
   let(:service) { ResultService.new }
+
+  let(:process) { ProcessHandler::PivotProcess.new(messenger, process_params) }
+  let(:process_params) {{ process_monitor: monitor , notifier_factory: notifier_factory, env: 'test' }}
+  let(:notifier_factory) { double('NotifierFactory') }
+
   let(:input) {{}}
   let(:result) { {success: true, result: 'RESULT'} }
 
@@ -40,6 +44,7 @@ describe ProcessHandler::PivotProcess do
 
   before do
     ProcessHandler::PivotProcess.logger = logger
+    allow(notifier_factory).to receive(:get_notifier) { nil }
     expect_monitor_to_behave
     expect_message
     expect_handler_thread_to_behave
@@ -64,8 +69,12 @@ describe ProcessHandler::PivotProcess do
     end
 
     describe 'with exception_notifier' do
-      subject { process.spawn(service, exception_notifier: exception_notifier) }
+
       let(:exception_notifier) { double('Airbrake') }
+
+      before do
+        allow(notifier_factory).to receive(:get_notifier) { exception_notifier }
+      end
 
       it 'triggers exception_notifier' do
         expect(exception_notifier).to receive(:notify_or_ignore)
