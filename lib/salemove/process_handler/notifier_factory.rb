@@ -12,6 +12,7 @@ module Salemove
             airbrake.host = conf.fetch(:host)
             airbrake.api_key = conf.fetch(:api_key)
           end
+          Airbrake
         end
       end     
 
