@@ -1,15 +1,35 @@
 require 'rufus-scheduler'
 require_relative 'cron_process_monitor'
+require_relative 'notifier_factory'
 
 module Salemove
   module ProcessHandler
+
+    class CronScheduler < Rufus::Scheduler
+
+      def initialize(exception_notifier, options)
+        super options
+        @exception_notifier = exception_notifier
+      end
+
+      def on_error(job, error)
+        @exception_notifier.notify_or_ignore(error, cgi_data: ENV.to_hash, parameters: job)
+        super
+      end
+
+    end
+
     class CronProcess
 
       attr_reader :process_monitor
 
-      def initialize(scheduler_options={})
+      def initialize(env: 'development',
+                     notifier: nil,
+                     notifier_factory: NotifierFactory,
+                     scheduler_options: {})
         @schedules = []
-        @scheduler = Rufus::Scheduler.new scheduler_options
+        @exception_notifier = notifier_factory.get_notifier(env, notifier)
+        @scheduler = CronScheduler.new @exception_notifier, scheduler_options
         @process_monitor = CronProcessMonitor.new(self)
       end
 
