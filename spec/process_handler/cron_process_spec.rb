@@ -72,7 +72,7 @@ describe ProcessHandler::CronProcess do
     end
 
     it 'notifies of exception' do
-      process.schedule('0.1')
+      process.schedule('0.2')
       expect(exception_notifier).to receive(:notify_or_ignore)
       Thread.new do
         process.spawn(ExceptionService.new(queue))
