@@ -13,7 +13,9 @@ module Salemove
       end
 
       def on_error(job, error)
-        @exception_notifier.notify_or_ignore(error, cgi_data: ENV.to_hash, parameters: job)
+        if @exception_notifier
+          @exception_notifier.notify_or_ignore(error, cgi_data: ENV.to_hash)
+        end
         super
       end
 
