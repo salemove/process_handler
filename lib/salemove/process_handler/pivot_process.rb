@@ -6,7 +6,7 @@ module Salemove
   module ProcessHandler
     class PivotProcess
 
-      attr_reader :process_monitor
+      attr_reader :process_monitor, :exception_notifier
 
       def self.logger
         @logger ||= Logger.new(STDOUT).tap { |l| l.level = Logger::INFO }
