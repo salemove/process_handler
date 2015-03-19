@@ -1,4 +1,5 @@
 require 'logger'
+require 'benchmark'
 require_relative 'process_monitor'
 require_relative 'notifier_factory'
 
@@ -70,7 +71,7 @@ module Salemove
         end
 
         def delegate_to_service(input)
-          result = @service.call(input)
+          result = benchmark(input) { @service.call(input) }
           PivotProcess.logger.info "Result: #{result.inspect}"
           result
         end
@@ -81,6 +82,19 @@ module Salemove
             @exception_notifier.notify_or_ignore(e, cgi_data: ENV.to_hash, parameters: input)
           end
           { success: false, error: e.message }
+        end
+
+        def benchmark(input, &block)
+          type = input[:type] if input.is_a?(Hash)
+          result = nil
+
+          bm = Benchmark.measure { result = block.call }
+          if defined?(Logasm) && PivotProcess.logger.is_a?(Logasm)
+            PivotProcess.logger.debug "Execution time",
+              type: type, real: bm.real, user: bm.utime, system: bm.stime
+          end
+
+          result
         end
       end
     end
