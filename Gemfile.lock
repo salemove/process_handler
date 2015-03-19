@@ -16,6 +16,11 @@ GEM
       timers (~> 1.1.0)
     coderay (1.1.0)
     diff-lcs (1.2.5)
+    inflecto (0.0.2)
+    logasm (0.1.0)
+      inflecto
+      logstash-event (~> 1.2)
+    logstash-event (1.2.02)
     method_source (0.8.2)
     multi_json (1.10.1)
     pry (0.9.12.6)
@@ -49,6 +54,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  logasm
   process_handler!
   pry
   rake

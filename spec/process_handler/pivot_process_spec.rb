@@ -1,4 +1,4 @@
-require 'logger'
+require 'logasm'
 require 'spec_helper'
 require 'salemove/process_handler/pivot_process'
 
@@ -22,7 +22,7 @@ describe ProcessHandler::PivotProcess do
   let(:input) {{}}
   let(:result) { {success: true, result: 'RESULT'} }
 
-  let(:logger) { Logger.new('/dev/null') }
+  let(:logger) { Logasm.new([]) }
 
   def expect_monitor_to_behave
     expect(monitor).to receive(:start)
