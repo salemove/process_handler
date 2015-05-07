@@ -18,6 +18,7 @@ describe ProcessHandler::PivotProcess do
   let(:process) { ProcessHandler::PivotProcess.new(messenger, process_params) }
   let(:process_params) {{ process_monitor: monitor , notifier_factory: notifier_factory, env: 'test' }}
   let(:notifier_factory) { double('NotifierFactory') }
+  let(:responder) { double(shutdown: true, join: true) }
 
   let(:input) {{}}
   let(:result) { {success: true, result: 'RESULT'} }
@@ -31,15 +32,16 @@ describe ProcessHandler::PivotProcess do
   end
 
   def expect_message
-    expect(messenger).to receive(:respond_to) do |destination, &callback|
+    expect(messenger).to receive(:respond_to) {|destination, &callback|
       callback.call(input, handler)
-    end
+    }.and_return(responder)
   end
 
   def expect_handler_thread_to_behave
-    allow(handler).to receive(:ack) { thread }
-    expect(thread).to receive(:shutdown)
-    expect(thread).to receive(:join)
+    allow(handler).to receive(:success) { thread }
+    allow(handler).to receive(:error) { thread }
+    expect(responder).to receive(:shutdown)
+    expect(responder).to receive(:join)
   end
 
   before do
@@ -54,11 +56,24 @@ describe ProcessHandler::PivotProcess do
   describe 'when service responds correctly' do
 
     it 'can be executed with logger' do
-      expect(handler).to receive(:ack).with(result)
+      expect(handler).to receive(:success).with(result)
       expect(service).to receive(:call).with(input)
       subject()
     end
 
+  end
+
+  describe 'when service responds with an error' do
+    let(:result) { { success: false, error: 'hey' } }
+
+    before do
+      expect(service).to receive(:call).with(input) { result }
+    end
+
+    it 'acks the message properly' do
+      expect(handler).to receive(:error).with(result)
+      subject()
+    end
   end
 
   shared_examples 'an error_handler' do
@@ -94,7 +109,7 @@ describe ProcessHandler::PivotProcess do
     end
 
     it 'acks the message properly' do
-      expect(handler).to receive(:ack).with(result)
+      expect(handler).to receive(:error).with(result)
       subject()
     end
 

@@ -8,7 +8,10 @@ require 'salemove/process_handler'
 
 include Salemove
 
-RSpec.configure do
+RSpec.configure do |rspec_config|
+  rspec_config.filter_run focus: true
+  rspec_config.run_all_when_everything_filtered = true
+
   def fixture_path(name)
     File.join(File.dirname(__FILE__), "fixtures", name)
   end
