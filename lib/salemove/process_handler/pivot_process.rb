@@ -56,7 +56,13 @@ module Salemove
 
         def spawn
           @messenger.respond_to(@service.class::QUEUE) do |input, handler|
-            handler.ack handle_request(input)
+            response = handle_request(input)
+
+            if response.is_a?(Hash) && (response[:success] == false || response[:error])
+              handler.error(response)
+            else
+              handler.success(response)
+            end
           end
         end
 

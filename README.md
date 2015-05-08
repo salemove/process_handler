@@ -5,19 +5,16 @@
 ProcessHandler helps to spawn and manage services. There are multiple types of processes. Every process knows how to handle `SIGINT` and `SIGTERM` signals.
 
 ## PivotProcess
-This process is used for services that need one or more threads and use the request-response model.
+This process is used for services that need one or more threads and use the request-response model [Freddy](https://github.com/salemove/freddy).
 
 Example of using pivot process:
 ```ruby
   service = MyService.new
-  messenger = MyMessenger.new
+  freddy = Freddy.new
 
-  process = Salemove::ProcessHandler::PivotProcess.new(messenger, threads_count: 5)
+  process = Salemove::ProcessHandler::PivotProcess.new(freddy)
   process.spawn(service)
 ```
-
-### Messenger
-See `Salemove::ProcessHandler::MockMessenger` for sample implementation. This is compatible with [Freddy](https://github.com/salemove/freddy).
 
 ### Service
 If you want to use pivot process, then the given service must implement `call` method that takes `input` as an argument.
