@@ -7,6 +7,8 @@ module Salemove
   module ProcessHandler
     class PivotProcess
 
+      DEFAULT_FULFILLABLE_TIMEOUT = 3
+
       attr_reader :process_monitor, :exception_notifier
 
       def self.logger
@@ -57,12 +59,33 @@ module Salemove
         def spawn
           @messenger.respond_to(@service.class::QUEUE) do |input, handler|
             response = handle_request(input)
-
-            if response.is_a?(Hash) && (response[:success] == false || response[:error])
-              handler.error(response)
+            if response.respond_to?(:fulfilled?)
+              handle_fulfillable_response(handler, response)
             else
-              handler.success(response)
+              handle_response(handler, response)
             end
+          end
+        end
+
+        def handle_fulfillable_response(handler, response)
+          timeout = response.respond_to?(:timeout) && response.timeout || DEFAULT_FULFILLABLE_TIMEOUT
+          Timeout::timeout(timeout) do
+            while true
+              if response.fulfilled?
+                return handle_response(handler, response.value)
+              end
+              sleep 0.001
+            end
+          end
+        rescue Timeout::Error
+          handle_response(handler, success: false, error: "Fulfillable response was not fulfilled")
+        end
+
+        def handle_response(handler, response)
+          if response.is_a?(Hash) && (response[:success] == false || response[:error])
+            handler.error(response)
+          else
+            handler.success(response)
           end
         end
 

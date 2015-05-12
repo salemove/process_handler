@@ -134,4 +134,52 @@ describe ProcessHandler::PivotProcess do
 
   end
 
+  describe 'when result is fulfillable' do
+    let(:result) { double }
+
+    context 'and its already fulfilled' do
+      let(:value) { { success: true, output: { result: 'R'} } }
+
+      before do
+        allow(result).to receive(:fulfilled?) { true }
+        allow(result).to receive(:value) { value }
+      end
+
+      it 'responds immediately' do
+        expect(handler).to receive(:success).with(value)
+        subject()
+      end
+    end
+
+    context 'and its fulfilled later' do
+      let(:value) { { success: true, output: { result: 'R'} } }
+
+      before do
+        allow(result).to receive(:fulfilled?) { false }
+        Thread.new do
+          sleep 0.005
+          allow(result).to receive(:fulfilled?) { true }
+          allow(result).to receive(:value) { value }
+        end
+      end
+
+      it 'responds when fulfilled' do
+        expect(handler).to receive(:success).with(value)
+        subject()
+      end
+    end
+
+    context 'and its never fulfilled' do
+      before do
+        allow(result).to receive(:fulfilled?) { false }
+        allow(result).to receive(:timeout) { 0.001 }
+      end
+
+      it 'responds with timeout error' do
+        expect(handler).to receive(:error).with(success: false, error: "Fulfillable response was not fulfilled")
+        subject
+      end
+    end
+  end
+
 end
