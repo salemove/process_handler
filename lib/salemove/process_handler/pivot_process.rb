@@ -32,15 +32,27 @@ module Salemove
       def spawn(service, blocking: true)
         @process_monitor.start
 
+        @service_threads = spawn_queue_threads(service).concat(spawn_tap_threads(service))
+        blocking ? wait_for_monitor : Thread.new { wait_for_monitor }
+      end
+
+      def spawn_queue_threads(service)
         if service.class.const_defined?(:QUEUE)
-          @service_threads = [ServiceSpawner.spawn(service, @messenger, @exception_notifier)]
-        elsif service.class.const_defined?(:TAPPED_QUEUES)
-          @service_threads = service.class::TAPPED_QUEUES.map do |queue|
+          [ServiceSpawner.spawn(service, @messenger, @exception_notifier)]
+        else
+          []
+        end
+      end
+
+      def spawn_tap_threads(service)
+        if service.class.const_defined?(:TAPPED_QUEUES)
+          service.class::TAPPED_QUEUES.map do |queue|
             spawner = TapServiceSpawner.new(service, @messenger, @exception_notifier)
             spawner.spawn(queue)
           end
+        else
+          []
         end
-        blocking ? wait_for_monitor : Thread.new { wait_for_monitor }
       end
 
       private
