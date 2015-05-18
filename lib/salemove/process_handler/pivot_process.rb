@@ -32,17 +32,65 @@ module Salemove
       def spawn(service, blocking: true)
         @process_monitor.start
 
-        @service_thread = ServiceSpawner.spawn(service, @messenger, @exception_notifier)
+        if service.class.const_defined?(:QUEUE)
+          @service_threads = [ServiceSpawner.spawn(service, @messenger, @exception_notifier)]
+        elsif service.class.const_defined?(:TAPPED_QUEUES)
+          @service_threads = service.class::TAPPED_QUEUES.map do |queue|
+            spawner = TapServiceSpawner.new(service, @messenger, @exception_notifier)
+            spawner.spawn(queue)
+          end
+        end
         blocking ? wait_for_monitor : Thread.new { wait_for_monitor }
       end
 
       private
 
+      def self.benchmark(input, &block)
+        type = input[:type] if input.is_a?(Hash)
+        result = nil
+
+        bm = Benchmark.measure { result = block.call }
+        if defined?(Logasm) && PivotProcess.logger.is_a?(Logasm)
+          PivotProcess.logger.debug "Execution time",
+            type: type, real: bm.real, user: bm.utime, system: bm.stime
+        end
+        result
+      end
+
       def wait_for_monitor
         sleep 1 while @process_monitor.running?
-        @service_thread.shutdown
-        @service_thread.join
+        @service_threads.each do |service_thread|
+          service_thread.shutdown
+          service_thread.join
+        end
         @process_monitor.shutdown
+      end
+
+      class TapServiceSpawner
+        def initialize(service, messenger, exception_notifier)
+          @service = service
+          @messenger = messenger
+          @exception_notifier = exception_notifier
+        end
+
+        def spawn(queue)
+          @messenger.tap_into(queue) do |input|
+            delegate_to_service(input.merge(type: queue))
+          end
+        end
+
+        def delegate_to_service(input)
+          PivotProcess.benchmark(input) { @service.call(input) }
+        rescue => exception
+          handle_exception(exception, input)
+        end
+
+        def handle_exception(e, input)
+          PivotProcess.logger.error(e.inspect + "\n" + e.backtrace.join("\n"))
+          if @exception_notifier
+            @exception_notifier.notify_or_ignore(e, cgi_data: ENV.to_hash, parameters: input)
+          end
+        end
       end
 
       class ServiceSpawner
@@ -100,7 +148,7 @@ module Salemove
         end
 
         def delegate_to_service(input)
-          result = benchmark(input) { @service.call(input) }
+          result = PivotProcess.benchmark(input) { @service.call(input) }
           PivotProcess.logger.info "Result: #{result.inspect}"
           result
         end
@@ -111,19 +159,6 @@ module Salemove
             @exception_notifier.notify_or_ignore(e, cgi_data: ENV.to_hash, parameters: input)
           end
           { success: false, error: e.message }
-        end
-
-        def benchmark(input, &block)
-          type = input[:type] if input.is_a?(Hash)
-          result = nil
-
-          bm = Benchmark.measure { result = block.call }
-          if defined?(Logasm) && PivotProcess.logger.is_a?(Logasm)
-            PivotProcess.logger.debug "Execution time",
-              type: type, real: bm.real, user: bm.utime, system: bm.stime
-          end
-
-          result
         end
       end
     end

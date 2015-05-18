@@ -2,27 +2,15 @@ require 'logasm'
 require 'spec_helper'
 require 'salemove/process_handler/pivot_process'
 
-class ResultService
-  QUEUE = 'Dummy'
-end
-
 describe ProcessHandler::PivotProcess do
   let(:monitor)   { double('Monitor') }
   let(:messenger) { double('Messenger') }
   let(:handler)   { double('Handler') }
   let(:thread)    { double('Thread') }
-
-  subject { process.spawn(service) }
-  let(:service) { ResultService.new }
-
   let(:process) { ProcessHandler::PivotProcess.new(messenger, process_params) }
   let(:process_params) {{ process_monitor: monitor , notifier_factory: notifier_factory, env: 'test' }}
   let(:notifier_factory) { double('NotifierFactory') }
   let(:responder) { double(shutdown: true, join: true) }
-
-  let(:input) {{}}
-  let(:result) { {success: true, result: 'RESULT'} }
-
   let(:logger) { Logasm.new([]) }
 
   def expect_monitor_to_behave
@@ -31,155 +19,244 @@ describe ProcessHandler::PivotProcess do
     expect(monitor).to receive(:shutdown)
   end
 
-  def expect_message
-    expect(messenger).to receive(:respond_to) {|destination, &callback|
-      callback.call(input, handler)
-    }.and_return(responder)
-  end
-
-  def expect_handler_thread_to_behave
-    allow(handler).to receive(:success) { thread }
-    allow(handler).to receive(:error) { thread }
-    expect(responder).to receive(:shutdown)
-    expect(responder).to receive(:join)
-  end
-
   before do
     ProcessHandler::PivotProcess.logger = logger
     allow(notifier_factory).to receive(:get_notifier) { nil }
     expect_monitor_to_behave
-    expect_message
-    expect_handler_thread_to_behave
-    allow(service).to receive(:call).with(input) { result }
   end
 
-  describe 'when service responds correctly' do
 
-    it 'can be executed with logger' do
-      expect(handler).to receive(:success).with(result)
-      expect(service).to receive(:call).with(input)
-      subject()
+  describe 'responding services' do
+    class ResultService
+      QUEUE = 'Dummy'
     end
 
-  end
+    subject { process.spawn(service) }
+    let(:service) { ResultService.new }
 
-  describe 'when service responds with an error' do
-    let(:result) { { success: false, error: 'hey' } }
+    let(:input) {{}}
+    let(:result) { {success: true, result: 'RESULT'} }
+
+    def expect_handler_thread_to_behave
+      allow(handler).to receive(:success) { thread }
+      allow(handler).to receive(:error) { thread }
+      expect(responder).to receive(:shutdown)
+      expect(responder).to receive(:join)
+    end
+
+
+    def expect_message
+      expect(messenger).to receive(:respond_to) {|destination, &callback|
+        callback.call(input, handler)
+      }.and_return(responder)
+    end
 
     before do
-      expect(service).to receive(:call).with(input) { result }
+      expect_message
+      expect_handler_thread_to_behave
+      allow(service).to receive(:call).with(input) { result }
     end
 
-    it 'acks the message properly' do
-      expect(handler).to receive(:error).with(result)
-      subject()
-    end
-  end
+    describe 'when service responds correctly' do
 
-  shared_examples 'an error_handler' do
-
-    it 'logs error' do
-      expect(logger).to receive(:error)
-      subject()
-    end
-
-    describe 'with exception_notifier' do
-
-      let(:exception_notifier) { double('Airbrake') }
-
-      before do
-        allow(notifier_factory).to receive(:get_notifier) { exception_notifier }
+      it 'can be executed with logger' do
+        expect(handler).to receive(:success).with(result)
+        expect(service).to receive(:call).with(input)
+        subject()
       end
 
-      it 'triggers exception_notifier' do
-        expect(exception_notifier).to receive(:notify_or_ignore)
+    end
+
+    describe 'when service responds with an error' do
+      let(:result) { { success: false, error: 'hey' } }
+
+      before do
+        expect(service).to receive(:call).with(input) { result }
+      end
+
+      it 'acks the message properly' do
+        expect(handler).to receive(:error).with(result)
         subject()
       end
     end
 
-  end
+    shared_examples 'an error_handler' do
 
-  describe 'when service raises exception' do
-
-    let(:result) { { success: false, error: exception } }
-    let(:exception) { "what an unexpected exception!" }
-
-    before do
-      expect(service).to receive(:call).with(input) { raise exception }
-    end
-
-    it 'acks the message properly' do
-      expect(handler).to receive(:error).with(result)
-      subject()
-    end
-
-    it_behaves_like 'an error_handler'
-
-  end
-
-  describe 'when exception raises after service call' do
-
-    let(:result) { { success: false, output: exception } }
-    let(:exception) { "no no no ... no inspect for you!" }
-
-    before do
-      expect(result).to receive(:inspect) { raise exception }
-    end
-
-    it 'still acks the message properly' do
-      subject()
-    end
-
-    it_behaves_like 'an error_handler'
-
-  end
-
-  describe 'when result is fulfillable' do
-    let(:result) { double }
-
-    context 'and its already fulfilled' do
-      let(:value) { { success: true, output: { result: 'R'} } }
-
-      before do
-        allow(result).to receive(:fulfilled?) { true }
-        allow(result).to receive(:value) { value }
-      end
-
-      it 'responds immediately' do
-        expect(handler).to receive(:success).with(value)
+      it 'logs error' do
+        expect(logger).to receive(:error)
         subject()
       end
-    end
 
-    context 'and its fulfilled later' do
-      let(:value) { { success: true, output: { result: 'R'} } }
+      describe 'with exception_notifier' do
 
-      before do
-        allow(result).to receive(:fulfilled?) { false }
-        Thread.new do
-          sleep 0.005
-          allow(result).to receive(:fulfilled?) { true }
-          allow(result).to receive(:value) { value }
+        let(:exception_notifier) { double('Airbrake') }
+
+        before do
+          allow(notifier_factory).to receive(:get_notifier) { exception_notifier }
+        end
+
+        it 'triggers exception_notifier' do
+          expect(exception_notifier).to receive(:notify_or_ignore)
+          subject()
         end
       end
 
-      it 'responds when fulfilled' do
-        expect(handler).to receive(:success).with(value)
-        subject()
-      end
     end
 
-    context 'and its never fulfilled' do
+    describe 'when service raises exception' do
+
+      let(:result) { { success: false, error: exception } }
+      let(:exception) { "what an unexpected exception!" }
+
       before do
-        allow(result).to receive(:fulfilled?) { false }
-        allow(result).to receive(:timeout) { 0.001 }
+        expect(service).to receive(:call).with(input) { raise exception }
       end
 
-      it 'responds with timeout error' do
-        expect(handler).to receive(:error).with(success: false, error: "Fulfillable response was not fulfilled")
-        subject
+      it 'acks the message properly' do
+        expect(handler).to receive(:error).with(result)
+        subject()
+      end
+
+      it_behaves_like 'an error_handler'
+
+    end
+
+    describe 'when exception raises after service call' do
+
+      let(:result) { { success: false, output: exception } }
+      let(:exception) { "no no no ... no inspect for you!" }
+
+      before do
+        expect(result).to receive(:inspect) { raise exception }
+      end
+
+      it 'still acks the message properly' do
+        subject()
+      end
+
+      it_behaves_like 'an error_handler'
+
+    end
+
+    describe 'when result is fulfillable' do
+      let(:result) { double }
+
+      context 'and its already fulfilled' do
+        let(:value) { { success: true, output: { result: 'R'} } }
+
+        before do
+          allow(result).to receive(:fulfilled?) { true }
+          allow(result).to receive(:value) { value }
+        end
+
+        it 'responds immediately' do
+          expect(handler).to receive(:success).with(value)
+          subject()
+        end
+      end
+
+      context 'and its fulfilled later' do
+        let(:value) { { success: true, output: { result: 'R'} } }
+
+        before do
+          allow(result).to receive(:fulfilled?) { false }
+          Thread.new do
+            sleep 0.005
+            allow(result).to receive(:fulfilled?) { true }
+            allow(result).to receive(:value) { value }
+          end
+        end
+
+        it 'responds when fulfilled' do
+          expect(handler).to receive(:success).with(value)
+          subject()
+        end
+      end
+
+      context 'and its never fulfilled' do
+        before do
+          allow(result).to receive(:fulfilled?) { false }
+          allow(result).to receive(:timeout) { 0.001 }
+        end
+
+        it 'responds with timeout error' do
+          expect(handler).to receive(:error).with(success: false, error: "Fulfillable response was not fulfilled")
+          subject
+        end
       end
     end
   end
 
+  describe 'tapping services' do
+    class TappingService
+      TAPPED_QUEUES = [
+        'one',
+        'two'
+      ]
+    end
+
+    subject { process.spawn(service) }
+    let(:service) { TappingService.new }
+    let(:tap_count) { TappingService::TAPPED_QUEUES.count }
+
+    let(:input) {{}}
+
+    def expect_tap_into
+      expect(messenger).to receive(:tap_into) do |destination, &callback|
+        callback.call(input)
+      end
+        .exactly(tap_count).times
+        .and_return(responder)
+    end
+
+    before do
+      expect_tap_into
+      expect(responder).to receive(:shutdown)
+      expect(responder).to receive(:join)
+      allow(service).to receive(:call).with(input)
+    end
+
+
+    describe 'when service handles the input correctly' do
+      it 'can be executed' do
+        expect(service).to receive(:call).with(input.merge(type: 'one'))
+        expect(service).to receive(:call).with(input.merge(type: 'two'))
+        subject()
+      end
+    end
+
+    shared_examples 'an error_handler' do
+      it 'logs error' do
+        expect(logger).to receive(:error)
+        subject()
+      end
+
+      describe 'with exception_notifier' do
+
+        let(:exception_notifier) { double('Airbrake') }
+
+        before do
+          allow(notifier_factory).to receive(:get_notifier) { exception_notifier }
+        end
+
+        it 'triggers exception_notifier' do
+          expect(exception_notifier).to receive(:notify_or_ignore)
+          subject()
+        end
+      end
+
+    end
+
+    describe 'when service raises exception' do
+      let(:exception) { "what an unexpected exception!" }
+
+      before do
+        expect(service).to receive(:call).with(input.merge(type: 'one')) {}
+        expect(service).to receive(:call).with(input.merge(type: 'two')) { raise exception }
+      end
+
+      it_behaves_like 'an error_handler'
+    end
+
+  end
 end
