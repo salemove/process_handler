@@ -23,10 +23,13 @@ module Salemove
                      env: 'development',
                      notifier: nil,
                      notifier_factory: NotifierFactory,
-                     process_monitor: ProcessMonitor.new)
+                     process_monitor: ProcessMonitor.new,
+                     exit_enforcer: nil)
         @messenger = messenger
         @process_monitor = process_monitor
         @exception_notifier = notifier_factory.get_notifier(env, notifier)
+        # Needed for forcing exit from jruby with exit(0)
+        @exit_enforcer = exit_enforcer || Proc.new {}
       end
 
       def spawn(service, blocking: true)
@@ -76,6 +79,7 @@ module Salemove
           service_thread.join
         end
         @process_monitor.shutdown
+        @exit_enforcer.call
       end
 
       class TapServiceSpawner
