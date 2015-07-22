@@ -30,7 +30,7 @@ module Salemove
                      notifier_factory: NotifierFactory,
                      scheduler_options: {})
         @schedules = []
-        @exception_notifier = notifier_factory.get_notifier(env, notifier)
+        @exception_notifier = notifier_factory.get_notifier(env, 'Cron Process', notifier)
         @scheduler = CronScheduler.new @exception_notifier, scheduler_options
         @process_monitor = CronProcessMonitor.new(self)
       end

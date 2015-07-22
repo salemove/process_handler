@@ -24,10 +24,11 @@ module Salemove
                      notifier: nil,
                      notifier_factory: NotifierFactory,
                      process_monitor: ProcessMonitor.new,
+                     process_name: 'Unknown process',
                      exit_enforcer: nil)
         @messenger = messenger
         @process_monitor = process_monitor
-        @exception_notifier = notifier_factory.get_notifier(env, notifier)
+        @exception_notifier = notifier_factory.get_notifier(env, process_name, notifier)
         # Needed for forcing exit from jruby with exit(0)
         @exit_enforcer = exit_enforcer || Proc.new {}
       end
