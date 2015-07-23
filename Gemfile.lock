@@ -5,6 +5,7 @@ PATH
       airbrake
       growl
       sucker_punch (~> 1.1)
+      terminal-notifier
 
 GEM
   remote: https://rubygems.org/
@@ -48,6 +49,7 @@ GEM
     slop (3.4.7)
     sucker_punch (1.5.0)
       celluloid (~> 0.16.0)
+    terminal-notifier (1.6.3)
     thread_safe (0.3.4)
     timers (4.0.1)
       hitimes
