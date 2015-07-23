@@ -21,4 +21,5 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'airbrake'
   spec.add_dependency 'sucker_punch', '~> 1.1' # for async airbrake notifications
   spec.add_dependency 'growl'
+  spec.add_dependency 'terminal-notifier'
 end

@@ -1,5 +1,6 @@
 require 'airbrake'
 require 'growl'
+require 'terminal-notifier'
 
 module Salemove
   module ProcessHandler
@@ -16,6 +17,8 @@ module Salemove
           Airbrake
         elsif conf && conf[:type] == 'growl'
           GrowlNotifier.new(process_name)
+        elsif conf && conf[:type] == 'terminal-notifier'
+          TerminalNotifierWrapper.new(process_name)
         end
       end
     end
@@ -25,8 +28,18 @@ module Salemove
         @process_name = process_name
       end
 
-      def notify_or_ignore(error, params)
+      def notify_or_ignore(error, _)
         Growl.notify error.message, title: "Error in #{@process_name}"
+      end
+    end
+
+    class TerminalNotifierWrapper
+      def initialize(process_name)
+        @process_name = process_name
+      end
+
+      def notify_or_ignore(error, _)
+        TerminalNotifier.notify(error, title: "Error in #{@process_name}")
       end
     end
   end
