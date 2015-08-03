@@ -25,7 +25,6 @@ describe ProcessHandler::PivotProcess do
     expect_monitor_to_behave
   end
 
-
   describe 'responding services' do
     class ResultService
       QUEUE = 'Dummy'
@@ -44,7 +43,6 @@ describe ProcessHandler::PivotProcess do
       expect(responder).to receive(:join)
     end
 
-
     def expect_message
       expect(messenger).to receive(:respond_to) {|destination, &callback|
         callback.call(input, handler)
@@ -54,14 +52,14 @@ describe ProcessHandler::PivotProcess do
     before do
       expect_message
       expect_handler_thread_to_behave
-      allow(service).to receive(:call).with(input) { result }
+      allow(service).to receive(:call).with(input.merge(request_id: anything)) { result }
     end
 
     describe 'when service responds correctly' do
 
       it 'can be executed with logger' do
         expect(handler).to receive(:success).with(result)
-        expect(service).to receive(:call).with(input)
+        expect(service).to receive(:call).with(input.merge(request_id: anything))
         subject()
       end
 
@@ -71,7 +69,7 @@ describe ProcessHandler::PivotProcess do
       let(:result) { { success: false, error: 'hey' } }
 
       before do
-        expect(service).to receive(:call).with(input) { result }
+        expect(service).to receive(:call).with(input.merge(request_id: anything)) { result }
       end
 
       it 'acks the message properly' do
@@ -109,7 +107,7 @@ describe ProcessHandler::PivotProcess do
       let(:exception) { "what an unexpected exception!" }
 
       before do
-        expect(service).to receive(:call).with(input) { raise exception }
+        expect(service).to receive(:call).with(input.merge(request_id: anything)) { raise exception }
       end
 
       it 'acks the message properly' do
@@ -121,25 +119,8 @@ describe ProcessHandler::PivotProcess do
 
     end
 
-    describe 'when exception raises after service call' do
-
-      let(:result) { { success: false, output: exception } }
-      let(:exception) { "no no no ... no inspect for you!" }
-
-      before do
-        expect(result).to receive(:inspect) { raise exception }
-      end
-
-      it 'still acks the message properly' do
-        subject()
-      end
-
-      it_behaves_like 'an error_handler'
-
-    end
-
     describe 'when result is fulfillable' do
-      let(:result) { double }
+      let(:result) { {} }
 
       context 'and its already fulfilled' do
         let(:value) { { success: true, output: { result: 'R'} } }
@@ -216,11 +197,10 @@ describe ProcessHandler::PivotProcess do
       allow(service).to receive(:call).with(input)
     end
 
-
     describe 'when service handles the input correctly' do
       it 'can be executed' do
-        expect(service).to receive(:call).with(input.merge(type: 'one'))
-        expect(service).to receive(:call).with(input.merge(type: 'two'))
+        expect(service).to receive(:call).with(input.merge(type: 'one', request_id: anything))
+        expect(service).to receive(:call).with(input.merge(type: 'two', request_id: anything))
         subject()
       end
     end
@@ -251,8 +231,8 @@ describe ProcessHandler::PivotProcess do
       let(:exception) { "what an unexpected exception!" }
 
       before do
-        expect(service).to receive(:call).with(input.merge(type: 'one')) {}
-        expect(service).to receive(:call).with(input.merge(type: 'two')) { raise exception }
+        expect(service).to receive(:call).with(input.merge(type: 'one', request_id: anything)) {}
+        expect(service).to receive(:call).with(input.merge(type: 'two', request_id: anything)) { raise exception }
       end
 
       it_behaves_like 'an error_handler'

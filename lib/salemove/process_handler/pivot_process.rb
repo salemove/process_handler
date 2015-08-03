@@ -1,5 +1,6 @@
 require 'logger'
 require 'benchmark'
+require 'securerandom'
 require_relative 'process_monitor'
 require_relative 'notifier_factory'
 
@@ -67,8 +68,9 @@ module Salemove
 
         bm = Benchmark.measure { result = block.call }
         if defined?(Logasm) && PivotProcess.logger.is_a?(Logasm)
-          PivotProcess.logger.debug "Execution time",
-            type: type, real: bm.real, user: bm.utime, system: bm.stime
+          PivotProcess.logger.info "Execution time",
+            request_id: input[:request_id], type: type,
+            real: bm.real, user: bm.utime, system: bm.stime
         end
         result
       end
@@ -92,18 +94,20 @@ module Salemove
 
         def spawn(queue)
           @messenger.tap_into(queue) do |input|
-            delegate_to_service(input.merge(type: queue))
+            request_id = SecureRandom.hex(5)
+            delegate_to_service(input.merge(type: queue, request_id: request_id))
           end
         end
 
         def delegate_to_service(input)
+          PivotProcess.logger.info "Received request", input
           PivotProcess.benchmark(input) { @service.call(input) }
         rescue => exception
           handle_exception(exception, input)
         end
 
         def handle_exception(e, input)
-          PivotProcess.logger.error(e.inspect + "\n" + e.backtrace.join("\n"))
+          PivotProcess.logger.error(e.inspect + "\n" + e.backtrace.join("\n"), request_id: input[:request_id])
           if @exception_notifier
             @exception_notifier.notify_or_ignore(e, cgi_data: ENV.to_hash, parameters: input)
           end
@@ -123,7 +127,9 @@ module Salemove
 
         def spawn
           @messenger.respond_to(@service.class::QUEUE) do |input, handler|
-            response = handle_request(input)
+            request_id = SecureRandom.hex(5)
+
+            response = handle_request(input.merge(request_id: request_id))
             if response.respond_to?(:fulfilled?)
               handle_fulfillable_response(handler, response)
             else
@@ -165,13 +171,14 @@ module Salemove
         end
 
         def delegate_to_service(input)
+          request_id = input[:request_id]
           result = PivotProcess.benchmark(input) { @service.call(input) }
-          PivotProcess.logger.info "Result: #{result.inspect}"
+          PivotProcess.logger.info "Processed request", result.merge(request_id: request_id)
           result
         end
 
         def handle_exception(e, input)
-          PivotProcess.logger.error(e.inspect + "\n" + e.backtrace.join("\n"))
+          PivotProcess.logger.error(e.inspect + "\n" + e.backtrace.join("\n"), request_id: input[:request_id])
           if @exception_notifier
             @exception_notifier.notify_or_ignore(e, cgi_data: ENV.to_hash, parameters: input)
           end
