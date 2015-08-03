@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    process_handler (0.1.5)
+    process_handler (0.2.0)
       airbrake
       growl
       sucker_punch (~> 1.1)
