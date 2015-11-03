@@ -170,10 +170,14 @@ module Salemove
           handle_exception(exception, input)
         end
 
+        PROCESSED_REQUEST_LOG_KEYS = [:error, :success]
+
         def delegate_to_service(input)
           request_id = input[:request_id]
           result = PivotProcess.benchmark(input) { @service.call(input) }
-          PivotProcess.logger.info "Processed request", result.merge(request_id: request_id)
+          PivotProcess.logger.info(
+            "Processed request", result.select{|k, _| PROCESSED_REQUEST_LOG_KEYS.include?(k)}.merge(request_id: request_id)
+          )
           result
         end
 
