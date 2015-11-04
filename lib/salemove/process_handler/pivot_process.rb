@@ -115,6 +115,8 @@ module Salemove
       end
 
       class ServiceSpawner
+        PROCESSED_REQUEST_LOG_KEYS = [:error, :success]
+
         def self.spawn(service, messenger, exception_notifier)
           new(service, messenger, exception_notifier).spawn
         end
@@ -170,15 +172,18 @@ module Salemove
           handle_exception(exception, input)
         end
 
-        PROCESSED_REQUEST_LOG_KEYS = [:error, :success]
-
         def delegate_to_service(input)
-          request_id = input[:request_id]
           result = PivotProcess.benchmark(input) { @service.call(input) }
-          PivotProcess.logger.info(
-            "Processed request", result.select{|k, _| PROCESSED_REQUEST_LOG_KEYS.include?(k)}.merge(request_id: request_id)
-          )
+          log_processed_request(input, result)
           result
+        end
+
+        def log_processed_request(input, result)
+          attributes = result
+            .select {|k, _| PROCESSED_REQUEST_LOG_KEYS.include?(k)}
+            .merge(request_id: input[:request_id], type: input[:type])
+
+          PivotProcess.logger.info "Processed request", attributes
         end
 
         def handle_exception(e, input)
