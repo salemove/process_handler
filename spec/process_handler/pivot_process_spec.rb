@@ -10,7 +10,7 @@ describe ProcessHandler::PivotProcess do
   let(:process) { ProcessHandler::PivotProcess.new(messenger, process_params) }
   let(:process_params) {{ process_monitor: monitor , notifier_factory: notifier_factory, env: 'test' }}
   let(:notifier_factory) { double('NotifierFactory') }
-  let(:responder) { double(shutdown: true, join: true) }
+  let(:responder) { double(shutdown: true) }
   let(:logger) { Logasm.new([]) }
 
   def expect_monitor_to_behave
@@ -40,7 +40,6 @@ describe ProcessHandler::PivotProcess do
       allow(handler).to receive(:success) { thread }
       allow(handler).to receive(:error) { thread }
       expect(responder).to receive(:shutdown)
-      expect(responder).to receive(:join)
     end
 
     def expect_message
@@ -193,7 +192,6 @@ describe ProcessHandler::PivotProcess do
     before do
       expect_tap_into
       expect(responder).to receive(:shutdown)
-      expect(responder).to receive(:join)
       allow(service).to receive(:call).with(input)
     end
 

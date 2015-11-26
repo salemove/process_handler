@@ -77,10 +77,7 @@ module Salemove
 
       def wait_for_monitor
         sleep 1 while @process_monitor.running?
-        @service_threads.each do |service_thread|
-          service_thread.shutdown
-          service_thread.join
-        end
+        @service_threads.each(&:shutdown)
         @process_monitor.shutdown
         @exit_enforcer.call
       end

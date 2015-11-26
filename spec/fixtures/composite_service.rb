@@ -20,13 +20,8 @@ module Salemove
   end
 
   class ResponderHandler
-    
     def shutdown
     end
-    
-    def join
-    end
-    
   end
 
   cron_process = ProcessHandler::CronProcess.new
