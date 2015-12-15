@@ -119,7 +119,7 @@ describe ProcessHandler::PivotProcess do
     end
 
     describe 'when result is fulfillable' do
-      let(:result) { {} }
+      let(:result) { double }
 
       context 'and its already fulfilled' do
         let(:value) { { success: true, output: { result: 'R'} } }
