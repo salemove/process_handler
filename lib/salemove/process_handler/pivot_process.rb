@@ -130,18 +130,19 @@ module Salemove
 
             response = handle_request(input.merge(request_id: request_id))
             if response.respond_to?(:fulfilled?)
-              handle_fulfillable_response(handler, response)
+              handle_fulfillable_response(input, handler, response)
             else
               handle_response(handler, response)
             end
           end
         end
 
-        def handle_fulfillable_response(handler, response)
+        def handle_fulfillable_response(input, handler, response)
           timeout = response.respond_to?(:timeout) && response.timeout || DEFAULT_FULFILLABLE_TIMEOUT
           Timeout::timeout(timeout) do
             while true
               if response.fulfilled?
+                log_processed_request(input, response.value)
                 return handle_response(handler, response.value)
               end
               sleep 0.001
@@ -171,7 +172,10 @@ module Salemove
 
         def delegate_to_service(input)
           result = PivotProcess.benchmark(input) { @service.call(input) }
-          log_processed_request(input, result)
+          if !result.respond_to?(:fulfilled?)
+            log_processed_request(input, result)
+          end
+
           result
         end
 
