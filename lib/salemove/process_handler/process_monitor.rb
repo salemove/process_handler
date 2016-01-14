@@ -39,7 +39,7 @@ module Salemove
         end
       end
 
-      # Interrupts a process. (The default action is to terminate gracefully).
+      # Terminates the process gracefully
       def init_int_signal
         trap :INT do
           puts 'Exiting process gracefully!'
@@ -47,10 +47,11 @@ module Salemove
         end
       end
 
-      # Terminates a process immediately.
+      # Terminates the process gracefully
       def init_term_signal
         trap :TERM do
-          exit
+          puts 'Exiting process gracefully!'
+          stop
         end
       end
 
