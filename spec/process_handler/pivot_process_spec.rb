@@ -154,13 +154,21 @@ describe ProcessHandler::PivotProcess do
       end
 
       context 'and its never fulfilled' do
+
+        let(:timeout) { 0.001 }
+
         before do
           allow(result).to receive(:fulfilled?) { false }
-          allow(result).to receive(:timeout) { 0.001 }
+          allow(result).to receive(:timeout) { timeout }
         end
 
         it 'responds with timeout error' do
           expect(handler).to receive(:error).with(success: false, error: "Fulfillable response was not fulfilled")
+          subject
+        end
+
+        it 'logs the error' do
+          expect(logger).to receive(:error).with("Fullfillable response was not fulfilled in #{timeout} seconds", {})
           subject
         end
       end

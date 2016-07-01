@@ -5,7 +5,7 @@ gem 'rufus-scheduler'
 gem 'logasm'
 
 group :test do
-  gem 'rspec', '~> 3.1'
+  gem 'rspec', '~> 3.1.0'
   gem 'pry'
 end
 
