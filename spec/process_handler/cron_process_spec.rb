@@ -62,7 +62,7 @@ describe ProcessHandler::CronProcess do
   describe 'exception handler' do
     let(:process) { ProcessHandler::CronProcess.new(params) }
     let(:params) {{ env: 'test', notifier_factory: notifier_factory,
-      scheduler_options: {frequency: 0.1} }}
+      scheduler_options: {frequency: 0.2} }}
     let(:notifier_factory) { double('NotifierFactory') }
     let(:exception_notifier) { double('Airbrake') }
     let(:queue) { Queue.new }
@@ -72,13 +72,12 @@ describe ProcessHandler::CronProcess do
     end
 
     it 'notifies of exception' do
-      process.schedule('0.2')
+      process.schedule('0.3')
       expect(exception_notifier).to receive(:notify_or_ignore)
       Thread.new do
         process.spawn(ExceptionService.new(queue))
       end
       queue.pop
-      sleep 0.1
     end
 
   end
