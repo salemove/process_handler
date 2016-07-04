@@ -149,6 +149,7 @@ module Salemove
             end
           end
         rescue Timeout::Error
+          PivotProcess.logger.error "Fullfillable response was not fulfilled in #{timeout} seconds", input
           handle_response(handler, success: false, error: "Fulfillable response was not fulfilled")
         end
 
