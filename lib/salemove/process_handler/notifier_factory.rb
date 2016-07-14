@@ -14,6 +14,11 @@ module Salemove
             airbrake.secure = true
             airbrake.host = conf.fetch(:host)
             airbrake.api_key = conf.fetch(:api_key)
+            [/_HOST$/, /_TCP$/, /_UDP$/, /_PROTO$/, /_ADDR$/, 'PWD',
+            'GEM_HOME', 'PATH', 'SERVICE_NAME', 'RUBY_MAJOR', 'RUBY_VERSION', 
+            'RUN_ENV', 'HOME', 'RUBYGEMS_VERSION', 'BUNDLER_VERSION'].each { 
+              | param_whitelist_filter| airbrake.params_whitelist_filters << param_whitelist_filter 
+            }
           end
           Airbrake
         elsif conf && conf[:type] == 'growl'
