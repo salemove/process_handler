@@ -66,18 +66,23 @@ describe ProcessHandler::CronProcess do
     let(:notifier_factory) { double('NotifierFactory') }
     let(:exception_notifier) { double('Airbrake') }
     let(:queue) { Queue.new }
+    let(:scheduler_interval) {0.8}
 
     before(:each) do
       allow(notifier_factory).to receive(:get_notifier) { exception_notifier }
     end
 
     it 'notifies of exception' do
-      process.schedule('0.3')
+      process.schedule(scheduler_interval.to_s)
       expect(exception_notifier).to receive(:notify_or_ignore)
       Thread.new do
         process.spawn(ExceptionService.new(queue))
       end
+      # block main thread until ExceptionService is called at least once
       queue.pop
+      # sometimes main thread finishes before thrown exception has reached the notifier
+      # so we wait in the main thread a bit (but no longer than the scheduler interval)
+      sleep(scheduler_interval / 2)
     end
 
   end
