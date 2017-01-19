@@ -11,7 +11,7 @@ describe ProcessHandler::PivotProcess do
   let(:process_params) {{ process_monitor: monitor , notifier_factory: notifier_factory, env: 'test' }}
   let(:notifier_factory) { double('NotifierFactory') }
   let(:responder) { double(shutdown: true) }
-  let(:logger) { Logasm.new([]) }
+  let(:logger) { Logasm.build('test-app', []) }
 
   def expect_monitor_to_behave
     expect(monitor).to receive(:start)
