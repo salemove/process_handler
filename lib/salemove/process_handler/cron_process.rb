@@ -25,12 +25,11 @@ module Salemove
 
       attr_reader :process_monitor
 
-      def initialize(env: 'development',
-                     notifier: nil,
+      def initialize(notifier: nil,
                      notifier_factory: NotifierFactory,
                      scheduler_options: {})
         @schedules = []
-        @exception_notifier = notifier_factory.get_notifier(env, 'Cron Process', notifier)
+        @exception_notifier = notifier_factory.get_notifier('Cron Process', notifier)
         @scheduler = CronScheduler.new @exception_notifier, scheduler_options
         @process_monitor = CronProcessMonitor.new(self)
       end

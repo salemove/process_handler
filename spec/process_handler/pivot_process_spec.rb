@@ -8,7 +8,7 @@ describe ProcessHandler::PivotProcess do
   let(:handler)   { double('Handler') }
   let(:thread)    { double('Thread') }
   let(:process) { ProcessHandler::PivotProcess.new(messenger, process_params) }
-  let(:process_params) {{ process_monitor: monitor , notifier_factory: notifier_factory, env: 'test' }}
+  let(:process_params) {{ process_monitor: monitor , notifier_factory: notifier_factory}}
   let(:notifier_factory) { double('NotifierFactory') }
   let(:responder) { double(shutdown: true) }
   let(:logger) { Logasm.build('test-app', []) }
