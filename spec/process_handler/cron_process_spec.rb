@@ -61,7 +61,7 @@ describe ProcessHandler::CronProcess do
 
   describe 'exception handler' do
     let(:process) { ProcessHandler::CronProcess.new(params) }
-    let(:params) {{ env: 'test', notifier_factory: notifier_factory,
+    let(:params) {{ notifier_factory: notifier_factory,
       scheduler_options: {frequency: 0.2} }}
     let(:notifier_factory) { double('NotifierFactory') }
     let(:exception_notifier) { double('Airbrake') }

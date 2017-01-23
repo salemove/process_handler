@@ -6,14 +6,19 @@ require 'salemove/process_handler/notifier_factory'
 describe 'Airbrake configuration' do
 
   let (:notice) { Airbrake::Notice.new(notice_args.merge(custom_notice_args)) }
-  let (:notifier_factory_conf) { {:type => 'airbrake',:host => 'localhost',:api_key => 'abc123'} }
-  let (:airbrake) { ProcessHandler::NotifierFactory.get_notifier('env', 'Process name', notifier_factory_conf) }
+  let (:environment_name) { 'SOME_ENVIRONMENT' }
+  let (:notifier_factory_conf) { {:type => 'airbrake',
+                                  :host => 'localhost',
+                                  :api_key => 'abc123',
+                                  :environment_name => environment_name} }
+  let (:airbrake) { ProcessHandler::NotifierFactory.get_notifier('Process name', notifier_factory_conf) }
   # Notice needs Airbrake configuration merged with :exception for creating the exception notification
   let (:notice_args) { {:exception => Exception.new}.merge(airbrake.configuration) }
+  let (:custom_notice_args) { {} }
   let (:filtered) { '[FILTERED]' }
 
   # Uses Airbrake configuration's 'params_whitelist_filters' param for filtering
-  context 'whitelist filter' do
+  describe 'whitelist filtering' do
 
     let (:custom_notice_args) {
       {
@@ -52,4 +57,7 @@ describe 'Airbrake configuration' do
 
   end
 
+  it 'configures environment_name' do
+    expect(notice[:environment_name]).to eq environment_name
+  end
 end

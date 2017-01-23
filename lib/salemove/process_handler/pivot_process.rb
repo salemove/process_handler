@@ -21,7 +21,6 @@ module Salemove
       end
 
       def initialize(messenger,
-                     env: 'development',
                      notifier: nil,
                      notifier_factory: NotifierFactory,
                      process_monitor: ProcessMonitor.new,
@@ -29,7 +28,7 @@ module Salemove
                      exit_enforcer: nil)
         @messenger = messenger
         @process_monitor = process_monitor
-        @exception_notifier = notifier_factory.get_notifier(env, process_name, notifier)
+        @exception_notifier = notifier_factory.get_notifier(process_name, notifier)
         # Needed for forcing exit from jruby with exit(0)
         @exit_enforcer = exit_enforcer || Proc.new {}
       end
