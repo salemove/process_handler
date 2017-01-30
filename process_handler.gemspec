@@ -6,8 +6,8 @@ require 'salemove/process_handler/version'
 Gem::Specification.new do |spec|
   spec.name          = 'process_handler'
   spec.version       = Salemove::ProcessHandler::VERSION
-  spec.authors       = ['Indrek Juhkam']
-  spec.email         = ['indrek@salemove.com']
+  spec.authors       = ['SaleMove TechMovers']
+  spec.email         = ['techmovers@salemove.com']
   spec.description   = %q{This gem helps to monitor and manage processes}
   spec.summary       = %q{}
   spec.homepage      = ''
