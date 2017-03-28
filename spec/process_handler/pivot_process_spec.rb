@@ -3,11 +3,11 @@ require 'spec_helper'
 require 'salemove/process_handler/pivot_process'
 
 describe ProcessHandler::PivotProcess do
-  let(:monitor)   { double('Monitor') }
-  let(:messenger) { double('Messenger') }
-  let(:handler)   { double('Handler') }
-  let(:thread)    { double('Thread') }
-  let(:process) { ProcessHandler::PivotProcess.new(messenger, process_params) }
+  let(:monitor) { double('Monitor') }
+  let(:freddy) { double('Freddy') }
+  let(:handler) { double('Handler') }
+  let(:thread) { double('Thread') }
+  let(:process) { ProcessHandler::PivotProcess.new(freddy, process_params) }
   let(:process_params) {{ process_monitor: monitor , notifier_factory: notifier_factory}}
   let(:notifier_factory) { double('NotifierFactory') }
   let(:responder) { double(shutdown: true) }
@@ -43,7 +43,7 @@ describe ProcessHandler::PivotProcess do
     end
 
     def expect_message
-      expect(messenger).to receive(:respond_to) {|destination, &callback|
+      expect(freddy).to receive(:respond_to) {|destination, &callback|
         callback.call(input, handler)
       }.and_return(responder)
     end
@@ -190,7 +190,7 @@ describe ProcessHandler::PivotProcess do
     let(:input) {{}}
 
     def expect_tap_into
-      expect(messenger).to receive(:tap_into) do |destination, &callback|
+      expect(freddy).to receive(:tap_into) do |destination, &callback|
         callback.call(input)
       end
         .exactly(tap_count).times

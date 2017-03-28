@@ -20,13 +20,13 @@ module Salemove
         @logger = logger
       end
 
-      def initialize(messenger,
+      def initialize(freddy,
                      notifier: nil,
                      notifier_factory: NotifierFactory,
                      process_monitor: ProcessMonitor.new,
                      process_name: 'Unknown process',
                      exit_enforcer: nil)
-        @messenger = messenger
+        @freddy = freddy
         @process_monitor = process_monitor
         @exception_notifier = notifier_factory.get_notifier(process_name, notifier)
         # Needed for forcing exit from jruby with exit(0)
@@ -42,7 +42,7 @@ module Salemove
 
       def spawn_queue_threads(service)
         if service.class.const_defined?(:QUEUE)
-          [ServiceSpawner.spawn(service, @messenger, @exception_notifier)]
+          [ServiceSpawner.spawn(service, @freddy, @exception_notifier)]
         else
           []
         end
@@ -51,7 +51,7 @@ module Salemove
       def spawn_tap_threads(service)
         if service.class.const_defined?(:TAPPED_QUEUES)
           service.class::TAPPED_QUEUES.map do |queue|
-            spawner = TapServiceSpawner.new(service, @messenger, @exception_notifier)
+            spawner = TapServiceSpawner.new(service, @freddy, @exception_notifier)
             spawner.spawn(queue)
           end
         else
@@ -82,14 +82,14 @@ module Salemove
       end
 
       class TapServiceSpawner
-        def initialize(service, messenger, exception_notifier)
+        def initialize(service, freddy, exception_notifier)
           @service = service
-          @messenger = messenger
+          @freddy = freddy
           @exception_notifier = exception_notifier
         end
 
         def spawn(queue)
-          @messenger.tap_into(queue) do |input|
+          @freddy.tap_into(queue) do |input|
             request_id = SecureRandom.hex(5)
             delegate_to_service(input.merge(type: queue, request_id: request_id))
           end
@@ -113,18 +113,18 @@ module Salemove
       class ServiceSpawner
         PROCESSED_REQUEST_LOG_KEYS = [:error, :success]
 
-        def self.spawn(service, messenger, exception_notifier)
-          new(service, messenger, exception_notifier).spawn
+        def self.spawn(service, freddy, exception_notifier)
+          new(service, freddy, exception_notifier).spawn
         end
 
-        def initialize(service, messenger, exception_notifier)
+        def initialize(service, freddy, exception_notifier)
           @service = service
-          @messenger = messenger
+          @freddy = freddy
           @exception_notifier = exception_notifier
         end
 
         def spawn
-          @messenger.respond_to(@service.class::QUEUE) do |input, handler|
+          @freddy.respond_to(@service.class::QUEUE) do |input, handler|
             request_id = SecureRandom.hex(5)
 
             response = handle_request(input.merge(request_id: request_id))
