@@ -51,14 +51,14 @@ describe ProcessHandler::PivotProcess do
     before do
       expect_message
       expect_handler_thread_to_behave
-      allow(service).to receive(:call).with(input.merge(request_id: anything)) { result }
+      allow(service).to receive(:call).with(input) { result }
     end
 
     describe 'when service responds correctly' do
 
       it 'can be executed with logger' do
         expect(handler).to receive(:success).with(result)
-        expect(service).to receive(:call).with(input.merge(request_id: anything))
+        expect(service).to receive(:call).with(input)
         subject()
       end
 
@@ -68,7 +68,7 @@ describe ProcessHandler::PivotProcess do
       let(:result) { { success: false, error: 'hey' } }
 
       before do
-        expect(service).to receive(:call).with(input.merge(request_id: anything)) { result }
+        expect(service).to receive(:call).with(input) { result }
       end
 
       it 'acks the message properly' do
@@ -106,7 +106,7 @@ describe ProcessHandler::PivotProcess do
       let(:exception) { "what an unexpected exception!" }
 
       before do
-        expect(service).to receive(:call).with(input.merge(request_id: anything)) { raise exception }
+        expect(service).to receive(:call).with(input) { raise exception }
       end
 
       it 'acks the message properly' do
@@ -205,8 +205,8 @@ describe ProcessHandler::PivotProcess do
 
     describe 'when service handles the input correctly' do
       it 'can be executed' do
-        expect(service).to receive(:call).with(input.merge(type: 'one', request_id: anything))
-        expect(service).to receive(:call).with(input.merge(type: 'two', request_id: anything))
+        expect(service).to receive(:call).with(input.merge(type: 'one'))
+        expect(service).to receive(:call).with(input.merge(type: 'two'))
         subject()
       end
     end
@@ -237,8 +237,8 @@ describe ProcessHandler::PivotProcess do
       let(:exception) { "what an unexpected exception!" }
 
       before do
-        expect(service).to receive(:call).with(input.merge(type: 'one', request_id: anything)) {}
-        expect(service).to receive(:call).with(input.merge(type: 'two', request_id: anything)) { raise exception }
+        expect(service).to receive(:call).with(input.merge(type: 'one')) {}
+        expect(service).to receive(:call).with(input.merge(type: 'two')) { raise exception }
       end
 
       it_behaves_like 'an error_handler'
