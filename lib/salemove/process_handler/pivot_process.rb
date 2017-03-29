@@ -20,13 +20,21 @@ module Salemove
         @logger = logger
       end
 
-      def initialize(messenger,
+      def self.trace_information
+        if defined?(Freddy) && Freddy.respond_to?(:trace)
+          {trace: Freddy.trace.to_h}
+        else
+          {}
+        end
+      end
+
+      def initialize(freddy,
                      notifier: nil,
                      notifier_factory: NotifierFactory,
                      process_monitor: ProcessMonitor.new,
                      process_name: 'Unknown process',
                      exit_enforcer: nil)
-        @messenger = messenger
+        @freddy = freddy
         @process_monitor = process_monitor
         @exception_notifier = notifier_factory.get_notifier(process_name, notifier)
         # Needed for forcing exit from jruby with exit(0)
@@ -42,7 +50,7 @@ module Salemove
 
       def spawn_queue_threads(service)
         if service.class.const_defined?(:QUEUE)
-          [ServiceSpawner.spawn(service, @messenger, @exception_notifier)]
+          [ServiceSpawner.spawn(service, @freddy, @exception_notifier)]
         else
           []
         end
@@ -51,7 +59,7 @@ module Salemove
       def spawn_tap_threads(service)
         if service.class.const_defined?(:TAPPED_QUEUES)
           service.class::TAPPED_QUEUES.map do |queue|
-            spawner = TapServiceSpawner.new(service, @messenger, @exception_notifier)
+            spawner = TapServiceSpawner.new(service, @freddy, @exception_notifier)
             spawner.spawn(queue)
           end
         else
@@ -67,9 +75,9 @@ module Salemove
 
         bm = Benchmark.measure { result = block.call }
         if defined?(Logasm) && PivotProcess.logger.is_a?(Logasm)
-          PivotProcess.logger.info "Execution time",
-            request_id: input[:request_id], type: type,
-            real: bm.real, user: bm.utime, system: bm.stime
+          PivotProcess.logger.info "Execution time", {
+            type: type, real: bm.real, user: bm.utime, system: bm.stime
+          }.merge(PivotProcess.trace_information)
         end
         result
       end
@@ -82,28 +90,27 @@ module Salemove
       end
 
       class TapServiceSpawner
-        def initialize(service, messenger, exception_notifier)
+        def initialize(service, freddy, exception_notifier)
           @service = service
-          @messenger = messenger
+          @freddy = freddy
           @exception_notifier = exception_notifier
         end
 
         def spawn(queue)
-          @messenger.tap_into(queue) do |input|
-            request_id = SecureRandom.hex(5)
-            delegate_to_service(input.merge(type: queue, request_id: request_id))
+          @freddy.tap_into(queue) do |input|
+            delegate_to_service(input.merge(type: queue))
           end
         end
 
         def delegate_to_service(input)
-          PivotProcess.logger.info "Received request", input
+          PivotProcess.logger.info "Received request", PivotProcess.trace_information.merge(input)
           PivotProcess.benchmark(input) { @service.call(input) }
         rescue => exception
           handle_exception(exception, input)
         end
 
         def handle_exception(e, input)
-          PivotProcess.logger.error(e.inspect + "\n" + e.backtrace.join("\n"), request_id: input[:request_id])
+          PivotProcess.logger.error(e.inspect + "\n" + e.backtrace.join("\n"), PivotProcess.trace_information)
           if @exception_notifier
             @exception_notifier.notify_or_ignore(e, cgi_data: ENV.to_hash, parameters: input)
           end
@@ -113,21 +120,19 @@ module Salemove
       class ServiceSpawner
         PROCESSED_REQUEST_LOG_KEYS = [:error, :success]
 
-        def self.spawn(service, messenger, exception_notifier)
-          new(service, messenger, exception_notifier).spawn
+        def self.spawn(service, freddy, exception_notifier)
+          new(service, freddy, exception_notifier).spawn
         end
 
-        def initialize(service, messenger, exception_notifier)
+        def initialize(service, freddy, exception_notifier)
           @service = service
-          @messenger = messenger
+          @freddy = freddy
           @exception_notifier = exception_notifier
         end
 
         def spawn
-          @messenger.respond_to(@service.class::QUEUE) do |input, handler|
-            request_id = SecureRandom.hex(5)
-
-            response = handle_request(input.merge(request_id: request_id))
+          @freddy.respond_to(@service.class::QUEUE) do |input, handler|
+            response = handle_request(input)
             if response.respond_to?(:fulfilled?)
               handle_fulfillable_response(input, handler, response)
             else
@@ -161,7 +166,7 @@ module Salemove
         end
 
         def handle_request(input)
-          PivotProcess.logger.debug "Received request", input
+          PivotProcess.logger.debug "Received request", PivotProcess.trace_information.merge(input)
           if input.has_key?(:ping)
             { success: true, pong: 'pong' }
           else
@@ -183,13 +188,14 @@ module Salemove
         def log_processed_request(input, result)
           attributes = result
             .select {|k, _| PROCESSED_REQUEST_LOG_KEYS.include?(k)}
-            .merge(request_id: input[:request_id], type: input[:type])
+            .merge(type: input[:type])
+            .merge(PivotProcess.trace_information)
 
           PivotProcess.logger.info "Processed request", attributes
         end
 
         def handle_exception(e, input)
-          PivotProcess.logger.error(e.inspect + "\n" + e.backtrace.join("\n"), request_id: input[:request_id])
+          PivotProcess.logger.error(e.inspect + "\n" + e.backtrace.join("\n"), PivotProcess.trace_information)
           if @exception_notifier
             @exception_notifier.notify_or_ignore(e, cgi_data: ENV.to_hash, parameters: input)
           end

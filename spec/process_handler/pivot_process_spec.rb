@@ -3,11 +3,11 @@ require 'spec_helper'
 require 'salemove/process_handler/pivot_process'
 
 describe ProcessHandler::PivotProcess do
-  let(:monitor)   { double('Monitor') }
-  let(:messenger) { double('Messenger') }
-  let(:handler)   { double('Handler') }
-  let(:thread)    { double('Thread') }
-  let(:process) { ProcessHandler::PivotProcess.new(messenger, process_params) }
+  let(:monitor) { double('Monitor') }
+  let(:freddy) { double('Freddy') }
+  let(:handler) { double('Handler') }
+  let(:thread) { double('Thread') }
+  let(:process) { ProcessHandler::PivotProcess.new(freddy, process_params) }
   let(:process_params) {{ process_monitor: monitor , notifier_factory: notifier_factory}}
   let(:notifier_factory) { double('NotifierFactory') }
   let(:responder) { double(shutdown: true) }
@@ -43,7 +43,7 @@ describe ProcessHandler::PivotProcess do
     end
 
     def expect_message
-      expect(messenger).to receive(:respond_to) {|destination, &callback|
+      expect(freddy).to receive(:respond_to) {|destination, &callback|
         callback.call(input, handler)
       }.and_return(responder)
     end
@@ -51,14 +51,14 @@ describe ProcessHandler::PivotProcess do
     before do
       expect_message
       expect_handler_thread_to_behave
-      allow(service).to receive(:call).with(input.merge(request_id: anything)) { result }
+      allow(service).to receive(:call).with(input) { result }
     end
 
     describe 'when service responds correctly' do
 
       it 'can be executed with logger' do
         expect(handler).to receive(:success).with(result)
-        expect(service).to receive(:call).with(input.merge(request_id: anything))
+        expect(service).to receive(:call).with(input)
         subject()
       end
 
@@ -68,7 +68,7 @@ describe ProcessHandler::PivotProcess do
       let(:result) { { success: false, error: 'hey' } }
 
       before do
-        expect(service).to receive(:call).with(input.merge(request_id: anything)) { result }
+        expect(service).to receive(:call).with(input) { result }
       end
 
       it 'acks the message properly' do
@@ -106,7 +106,7 @@ describe ProcessHandler::PivotProcess do
       let(:exception) { "what an unexpected exception!" }
 
       before do
-        expect(service).to receive(:call).with(input.merge(request_id: anything)) { raise exception }
+        expect(service).to receive(:call).with(input) { raise exception }
       end
 
       it 'acks the message properly' do
@@ -190,7 +190,7 @@ describe ProcessHandler::PivotProcess do
     let(:input) {{}}
 
     def expect_tap_into
-      expect(messenger).to receive(:tap_into) do |destination, &callback|
+      expect(freddy).to receive(:tap_into) do |destination, &callback|
         callback.call(input)
       end
         .exactly(tap_count).times
@@ -205,8 +205,8 @@ describe ProcessHandler::PivotProcess do
 
     describe 'when service handles the input correctly' do
       it 'can be executed' do
-        expect(service).to receive(:call).with(input.merge(type: 'one', request_id: anything))
-        expect(service).to receive(:call).with(input.merge(type: 'two', request_id: anything))
+        expect(service).to receive(:call).with(input.merge(type: 'one'))
+        expect(service).to receive(:call).with(input.merge(type: 'two'))
         subject()
       end
     end
@@ -237,8 +237,8 @@ describe ProcessHandler::PivotProcess do
       let(:exception) { "what an unexpected exception!" }
 
       before do
-        expect(service).to receive(:call).with(input.merge(type: 'one', request_id: anything)) {}
-        expect(service).to receive(:call).with(input.merge(type: 'two', request_id: anything)) { raise exception }
+        expect(service).to receive(:call).with(input.merge(type: 'one')) {}
+        expect(service).to receive(:call).with(input.merge(type: 'two')) { raise exception }
       end
 
       it_behaves_like 'an error_handler'
