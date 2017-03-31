@@ -20,9 +20,15 @@ module Salemove
         @logger = logger
       end
 
+      def self.tracing_supported?
+        defined?(Freddy) &&
+          Freddy.respond_to?(:trace) &&
+          Freddy.trace.context.respond_to?(:to_h)
+      end
+
       def self.trace_information
-        if defined?(Freddy) && Freddy.respond_to?(:trace)
-          {trace: Freddy.trace.to_h}
+        if tracing_supported?
+          {trace: Freddy.trace.context.to_h}
         else
           {}
         end
