@@ -172,7 +172,7 @@ module Salemove
         end
 
         def handle_request(input)
-          PivotProcess.logger.debug "Received request", PivotProcess.trace_information.merge(input)
+          PivotProcess.logger.info "Received request", PivotProcess.trace_information.merge(input)
           if input.has_key?(:ping)
             { success: true, pong: 'pong' }
           else
