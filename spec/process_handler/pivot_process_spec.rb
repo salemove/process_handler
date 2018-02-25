@@ -5,13 +5,24 @@ require 'salemove/process_handler/pivot_process'
 describe ProcessHandler::PivotProcess do
   let(:monitor) { double('Monitor') }
   let(:freddy) { double('Freddy') }
+  let(:statsd) { spy('Statsd') }
   let(:handler) { double('Handler') }
   let(:thread) { double('Thread') }
-  let(:process) { ProcessHandler::PivotProcess.new(freddy, process_params) }
-  let(:process_params) {{ process_monitor: monitor , notifier_factory: notifier_factory}}
   let(:notifier_factory) { double('NotifierFactory') }
   let(:responder) { double(shutdown: true) }
   let(:logger) { Logasm.build('test-app', []) }
+  let(:application) { 'my-app' }
+
+  let(:process) do
+    ProcessHandler::PivotProcess.new(
+      freddy: freddy,
+      logger: logger,
+      statsd: statsd,
+      process_monitor: monitor,
+      process_name: application,
+      notifier_factory: notifier_factory
+    )
+  end
 
   def expect_monitor_to_behave
     expect(monitor).to receive(:start)
@@ -20,7 +31,6 @@ describe ProcessHandler::PivotProcess do
   end
 
   before do
-    ProcessHandler::PivotProcess.logger = logger
     allow(notifier_factory).to receive(:get_notifier) { nil }
     expect_monitor_to_behave
   end
@@ -62,6 +72,15 @@ describe ProcessHandler::PivotProcess do
         subject()
       end
 
+      it 'records execution time' do
+        expect(statsd).to receive(:histogram)
+          .with(
+            'service.execution_time',
+            instance_of(Float),
+            tags: ["application:#{application}", "type:unknown"]
+          )
+        subject()
+      end
     end
 
     describe 'when service responds with an error' do
