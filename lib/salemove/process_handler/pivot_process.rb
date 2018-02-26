@@ -1,4 +1,3 @@
-require 'logger'
 require 'benchmark'
 require 'securerandom'
 require_relative 'process_monitor'
@@ -9,16 +8,9 @@ module Salemove
     class PivotProcess
 
       DEFAULT_FULFILLABLE_TIMEOUT = 3
+      DEFAULT_EXECUTION_TIME_KEY = 'service.execution_time'.freeze
 
       attr_reader :process_monitor, :exception_notifier
-
-      def self.logger
-        @logger ||= Logger.new(STDOUT).tap { |l| l.level = Logger::INFO }
-      end
-
-      def self.logger=(logger)
-        @logger = logger
-      end
 
       def self.tracing_supported?
         defined?(Freddy) &&
@@ -34,13 +26,22 @@ module Salemove
         end
       end
 
-      def initialize(freddy,
+      def initialize(freddy:,
+                     logger:,
+                     statsd:,
                      notifier: nil,
                      notifier_factory: NotifierFactory,
                      process_monitor: ProcessMonitor.new,
                      process_name: 'Unknown process',
+                     execution_time_key: DEFAULT_EXECUTION_TIME_KEY,
                      exit_enforcer: nil)
         @freddy = freddy
+        @logger = logger
+        @benchmarker = Benchmarker.new(
+          statsd: statsd,
+          application: process_name,
+          execution_time_key: execution_time_key
+        )
         @process_monitor = process_monitor
         @exception_notifier = notifier_factory.get_notifier(process_name, notifier)
         # Needed for forcing exit from jruby with exit(0)
@@ -56,7 +57,15 @@ module Salemove
 
       def spawn_queue_threads(service)
         if service.class.const_defined?(:QUEUE)
-          [ServiceSpawner.spawn(service, @freddy, @exception_notifier)]
+          [
+            ServiceSpawner.new(
+              service,
+              freddy: @freddy,
+              logger: @logger,
+              benchmarker: @benchmarker,
+              exception_notifier: @exception_notifier
+            ).spawn
+          ]
         else
           []
         end
@@ -65,7 +74,13 @@ module Salemove
       def spawn_tap_threads(service)
         if service.class.const_defined?(:TAPPED_QUEUES)
           service.class::TAPPED_QUEUES.map do |queue|
-            spawner = TapServiceSpawner.new(service, @freddy, @exception_notifier)
+            spawner = TapServiceSpawner.new(
+              service,
+              freddy: @freddy,
+              logger: @logger,
+              benchmarker: @benchmarker,
+              exception_notifier: @exception_notifier
+            )
             spawner.spawn(queue)
           end
         else
@@ -75,18 +90,6 @@ module Salemove
 
       private
 
-      def self.benchmark(input, &block)
-        type = input[:type] if input.is_a?(Hash)
-        result = nil
-
-        bm = Benchmark.measure { result = block.call }
-        if defined?(Logasm) && PivotProcess.logger.is_a?(Logasm)
-          PivotProcess.logger.info "Execution time", {
-            type: type, real: bm.real, user: bm.utime, system: bm.stime
-          }.merge(PivotProcess.trace_information)
-        end
-        result
-      end
 
       def wait_for_monitor
         sleep 1 while @process_monitor.running?
@@ -96,9 +99,11 @@ module Salemove
       end
 
       class TapServiceSpawner
-        def initialize(service, freddy, exception_notifier)
+        def initialize(service, freddy:, logger:, benchmarker:, exception_notifier:)
           @service = service
           @freddy = freddy
+          @logger = logger
+          @benchmarker = benchmarker
           @exception_notifier = exception_notifier
         end
 
@@ -109,14 +114,14 @@ module Salemove
         end
 
         def delegate_to_service(input)
-          PivotProcess.logger.info "Received request", PivotProcess.trace_information.merge(input)
-          PivotProcess.benchmark(input) { @service.call(input) }
+          @logger.info 'Received request', PivotProcess.trace_information.merge(input)
+          @benchmarker.call(input) { @service.call(input) }
         rescue => exception
           handle_exception(exception, input)
         end
 
         def handle_exception(e, input)
-          PivotProcess.logger.error(e.inspect + "\n" + e.backtrace.join("\n"), PivotProcess.trace_information)
+          @logger.error(e.inspect + "\n" + e.backtrace.join("\n"), PivotProcess.trace_information)
           if @exception_notifier
             @exception_notifier.notify_or_ignore(e, cgi_data: ENV.to_hash, parameters: input)
           end
@@ -126,13 +131,11 @@ module Salemove
       class ServiceSpawner
         PROCESSED_REQUEST_LOG_KEYS = [:error, :success]
 
-        def self.spawn(service, freddy, exception_notifier)
-          new(service, freddy, exception_notifier).spawn
-        end
-
-        def initialize(service, freddy, exception_notifier)
+        def initialize(service, freddy:, logger:, benchmarker:, exception_notifier:)
           @service = service
           @freddy = freddy
+          @logger = logger
+          @benchmarker = benchmarker
           @exception_notifier = exception_notifier
         end
 
@@ -159,7 +162,7 @@ module Salemove
             end
           end
         rescue Timeout::Error
-          PivotProcess.logger.error "Fullfillable response was not fulfilled in #{timeout} seconds", input
+          @logger.error "Fullfillable response was not fulfilled in #{timeout} seconds", input
           handle_response(handler, success: false, error: "Fulfillable response was not fulfilled")
         end
 
@@ -172,7 +175,7 @@ module Salemove
         end
 
         def handle_request(input)
-          PivotProcess.logger.info "Received request", PivotProcess.trace_information.merge(input)
+          @logger.info 'Received request', PivotProcess.trace_information.merge(input)
           if input.has_key?(:ping)
             { success: true, pong: 'pong' }
           else
@@ -183,7 +186,7 @@ module Salemove
         end
 
         def delegate_to_service(input)
-          result = PivotProcess.benchmark(input) { @service.call(input) }
+          result = @benchmarker.call(input) { @service.call(input) }
           if !result.respond_to?(:fulfilled?)
             log_processed_request(input, result)
           end
@@ -197,15 +200,37 @@ module Salemove
             .merge(type: input[:type])
             .merge(PivotProcess.trace_information)
 
-          PivotProcess.logger.info "Processed request", attributes
+          @logger.info 'Processed request', attributes
         end
 
         def handle_exception(e, input)
-          PivotProcess.logger.error(e.inspect + "\n" + e.backtrace.join("\n"), PivotProcess.trace_information)
+          @logger.error(e.inspect + "\n" + e.backtrace.join("\n"), PivotProcess.trace_information)
           if @exception_notifier
             @exception_notifier.notify_or_ignore(e, cgi_data: ENV.to_hash, parameters: input)
           end
           { success: false, error: e.message }
+        end
+      end
+
+      class Benchmarker
+        def initialize(statsd:, application:, execution_time_key:)
+          @statsd = statsd
+          @application = application
+          @execution_time_key = execution_time_key
+        end
+
+        def call(input, &block)
+          type = input[:type] if input.is_a?(Hash)
+          result = nil
+
+          bm = Benchmark.measure { result = block.call }
+
+          @statsd.histogram(@execution_time_key, bm.real, tags: [
+            "application:#{@application}",
+            "type:#{type || 'unknown'}"
+          ])
+
+          result
         end
       end
     end

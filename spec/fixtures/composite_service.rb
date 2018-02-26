@@ -13,9 +13,14 @@ module Salemove
     end
   end
 
-  class Messenger
+  class Freddy
     def respond_to(*)
       ResponderHandler.new
+    end
+  end
+
+  class DummyStatsd
+    def histogram(*)
     end
   end
 
@@ -28,8 +33,11 @@ module Salemove
   cron_process.schedule('0.5')
   cron_process.schedule('5', some: 'params')
 
-  ProcessHandler::PivotProcess.logger = Logger.new('/dev/null')
-  pivot_process = ProcessHandler::PivotProcess.new(Messenger.new)
+  pivot_process = ProcessHandler::PivotProcess.new(
+    freddy: Freddy.new,
+    logger: Logger.new('/dev/null'),
+    statsd: DummyStatsd.new
+  )
 
   ProcessHandler.start_composite do
     add cron_process, EchoResultService.new

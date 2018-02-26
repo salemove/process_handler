@@ -12,8 +12,14 @@ Example of using pivot process:
 ```ruby
   service = MyService.new
   freddy = Freddy.new
+  statsd = Statsd.new
+  logger = Logasm.build('my-app', {stdout: {level: :debug}})
 
-  process = Salemove::ProcessHandler::PivotProcess.new(freddy)
+  process = Salemove::ProcessHandler::PivotProcess.new(
+    freddy: freddy,
+    logger: logger,
+    statsd: statsd
+  )
   process.spawn(service)
 ```
 
