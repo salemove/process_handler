@@ -33,6 +33,7 @@ module Salemove
                      notifier_factory: NotifierFactory,
                      process_monitor: ProcessMonitor.new,
                      process_name: 'Unknown process',
+                     log_error_as_string: false,
                      execution_time_key: DEFAULT_EXECUTION_TIME_KEY,
                      exit_enforcer: nil)
         @freddy = freddy
@@ -46,6 +47,7 @@ module Salemove
         @exception_notifier = notifier_factory.get_notifier(process_name, notifier)
         # Needed for forcing exit from jruby with exit(0)
         @exit_enforcer = exit_enforcer || Proc.new {}
+        @log_error_as_string = log_error_as_string
       end
 
       def spawn(service, blocking: true)
@@ -63,7 +65,8 @@ module Salemove
               freddy: @freddy,
               logger: @logger,
               benchmarker: @benchmarker,
-              exception_notifier: @exception_notifier
+              exception_notifier: @exception_notifier,
+              log_error_as_string: @log_error_as_string
             ).spawn
           ]
         else
@@ -131,12 +134,13 @@ module Salemove
       class ServiceSpawner
         PROCESSED_REQUEST_LOG_KEYS = [:error, :success]
 
-        def initialize(service, freddy:, logger:, benchmarker:, exception_notifier:)
+        def initialize(service, freddy:, logger:, benchmarker:, exception_notifier:, log_error_as_string:)
           @service = service
           @freddy = freddy
           @logger = logger
           @benchmarker = benchmarker
           @exception_notifier = exception_notifier
+          @log_error_as_string = log_error_as_string
         end
 
         def spawn
@@ -200,6 +204,9 @@ module Salemove
             .merge(type: input[:type])
             .merge(PivotProcess.trace_information)
 
+          if @log_error_as_string
+            attributes[:error] = attributes[:error].to_s if attributes.has_key?(:error)
+          end
           @logger.info 'Processed request', attributes
         end
 

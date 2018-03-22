@@ -12,6 +12,7 @@ describe ProcessHandler::PivotProcess do
   let(:responder) { double(shutdown: true) }
   let(:logger) { Logasm.build('test-app', []) }
   let(:application) { 'my-app' }
+  let(:log_error_as_string) { false }
 
   let(:process) do
     ProcessHandler::PivotProcess.new(
@@ -20,7 +21,8 @@ describe ProcessHandler::PivotProcess do
       statsd: statsd,
       process_monitor: monitor,
       process_name: application,
-      notifier_factory: notifier_factory
+      notifier_factory: notifier_factory,
+      log_error_as_string: log_error_as_string
     )
   end
 
@@ -93,6 +95,38 @@ describe ProcessHandler::PivotProcess do
       it 'acks the message properly' do
         expect(handler).to receive(:error).with(result)
         subject()
+      end
+    end
+
+    describe 'when service responds with an error object' do
+      let(:result) { { success: false, error: {error: 'hey', message: 'message' } } }
+
+      before do
+        expect(service).to receive(:call).with(input) { result }
+      end
+
+      it 'logs the message as an object' do
+        expect(logger).to receive(:info).with("Received request", {})
+        expect(logger).to receive(:info)
+          .with(
+            "Processed request",
+            { success: false, error: {error: 'hey', message: 'message'}, type: nil }
+          )
+        subject()
+      end
+
+      describe 'when log_error_as_string' do
+        let(:log_error_as_string) { true }
+
+        it 'logs the message as string' do
+          expect(logger).to receive(:info).with("Received request", {})
+          expect(logger).to receive(:info)
+            .with(
+              "Processed request",
+              { success: false, error: "{:error=>\"hey\", :message=>\"message\"}", type: nil }
+            )
+          subject()
+        end
       end
     end
 
