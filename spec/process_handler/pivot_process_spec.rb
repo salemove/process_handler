@@ -99,33 +99,44 @@ describe ProcessHandler::PivotProcess do
     end
 
     describe 'when service responds with an error object' do
-      let(:result) { { success: false, error: {error: 'hey', message: 'message' } } }
+      let(:result) { { success: false, error: { error: 'hey', message: 'message' } } }
+      let(:input) { { type: :update, value: 42 } }
 
       before do
         expect(service).to receive(:call).with(input) { result }
       end
 
-      it 'logs the message as an object' do
-        expect(logger).to receive(:info).with("Received request", {})
+      it 'logs the message as an object and includes input' do
+        expect(logger).to receive(:info).with('Received request', input)
+
         expect(logger).to receive(:info)
           .with(
-            "Processed request",
-            { success: false, error: {error: 'hey', message: 'message'}, type: nil }
+            'Processed request',
+            {
+              success: false,
+              error: { error: 'hey', message: 'message' }
+            }.merge(input)
           )
-        subject()
+
+        subject
       end
 
       describe 'when log_error_as_string' do
         let(:log_error_as_string) { true }
 
-        it 'logs the message as string' do
-          expect(logger).to receive(:info).with("Received request", {})
+        it 'logs the message as string and includes input' do
+          expect(logger).to receive(:info).with('Received request', input)
+
           expect(logger).to receive(:info)
             .with(
-              "Processed request",
-              { success: false, error: "{:error=>\"hey\", :message=>\"message\"}", type: nil }
+              'Processed request',
+              {
+                success: false,
+                error: '{:error=>"hey", :message=>"message"}'
+              }.merge(input)
             )
-          subject()
+
+          subject
         end
       end
     end

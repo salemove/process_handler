@@ -191,7 +191,8 @@ module Salemove
 
         def delegate_to_service(input)
           result = @benchmarker.call(input) { @service.call(input) }
-          if !result.respond_to?(:fulfilled?)
+
+          unless result.respond_to?(:fulfilled?)
             log_processed_request(input, result)
           end
 
@@ -200,13 +201,14 @@ module Salemove
 
         def log_processed_request(input, result)
           attributes = result
-            .select {|k, _| PROCESSED_REQUEST_LOG_KEYS.include?(k)}
-            .merge(type: input[:type])
+            .select { |k, _| PROCESSED_REQUEST_LOG_KEYS.include?(k) }
+            .merge(input)
             .merge(PivotProcess.trace_information)
 
           if @log_error_as_string
             attributes[:error] = attributes[:error].to_s if attributes.has_key?(:error)
           end
+
           @logger.info 'Processed request', attributes
         end
 
