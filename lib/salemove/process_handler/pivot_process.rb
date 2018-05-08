@@ -119,14 +119,22 @@ module Salemove
         def delegate_to_service(input)
           @logger.info 'Received request', PivotProcess.trace_information.merge(input)
           @benchmarker.call(input) { @service.call(input) }
-        rescue => exception
+        rescue StandardError => exception
           handle_exception(exception, input)
         end
 
-        def handle_exception(e, input)
-          @logger.error(e.inspect + "\n" + e.backtrace.join("\n"), PivotProcess.trace_information)
+        def handle_exception(exception, input)
+          message = [exception.inspect, *exception.backtrace].join("\n")
+          metadata = PivotProcess.trace_information.merge(input)
+
+          @logger.error(message, metadata)
+
           if @exception_notifier
-            @exception_notifier.notify_or_ignore(e, cgi_data: ENV.to_hash, parameters: input)
+            @exception_notifier.notify_or_ignore(
+              exception,
+              cgi_data: ENV.to_hash,
+              parameters: input
+            )
           end
         end
       end
@@ -185,7 +193,7 @@ module Salemove
           else
             delegate_to_service(input)
           end
-        rescue => exception
+        rescue StandardError => exception
           handle_exception(exception, input)
         end
 
@@ -212,12 +220,21 @@ module Salemove
           @logger.info 'Processed request', attributes
         end
 
-        def handle_exception(e, input)
-          @logger.error(e.inspect + "\n" + e.backtrace.join("\n"), PivotProcess.trace_information)
+        def handle_exception(exception, input)
+          message = [exception.inspect, *exception.backtrace].join("\n")
+          metadata = PivotProcess.trace_information.merge(input)
+
+          @logger.error(message, metadata)
+
           if @exception_notifier
-            @exception_notifier.notify_or_ignore(e, cgi_data: ENV.to_hash, parameters: input)
+            @exception_notifier.notify_or_ignore(
+              exception,
+              cgi_data: ENV.to_hash,
+              parameters: input
+            )
           end
-          { success: false, error: e.message }
+
+          { success: false, error: exception.message }
         end
       end
 
