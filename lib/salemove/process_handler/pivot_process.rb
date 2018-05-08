@@ -119,14 +119,22 @@ module Salemove
         def delegate_to_service(input)
           @logger.info 'Received request', PivotProcess.trace_information.merge(input)
           @benchmarker.call(input) { @service.call(input) }
-        rescue => exception
+        rescue StandardError => exception
           handle_exception(exception, input)
         end
 
-        def handle_exception(e, input)
-          @logger.error(e.inspect + "\n" + e.backtrace.join("\n"), PivotProcess.trace_information)
+        def handle_exception(exception, input)
+          message = [exception.inspect, *exception.backtrace].join("\n")
+          metadata = PivotProcess.trace_information.merge(input)
+
+          @logger.error(message, metadata)
+
           if @exception_notifier
-            @exception_notifier.notify_or_ignore(e, cgi_data: ENV.to_hash, parameters: input)
+            @exception_notifier.notify_or_ignore(
+              exception,
+              cgi_data: ENV.to_hash,
+              parameters: input
+            )
           end
         end
       end
@@ -185,13 +193,14 @@ module Salemove
           else
             delegate_to_service(input)
           end
-        rescue => exception
+        rescue StandardError => exception
           handle_exception(exception, input)
         end
 
         def delegate_to_service(input)
           result = @benchmarker.call(input) { @service.call(input) }
-          if !result.respond_to?(:fulfilled?)
+
+          unless result.respond_to?(:fulfilled?)
             log_processed_request(input, result)
           end
 
@@ -200,22 +209,32 @@ module Salemove
 
         def log_processed_request(input, result)
           attributes = result
-            .select {|k, _| PROCESSED_REQUEST_LOG_KEYS.include?(k)}
-            .merge(type: input[:type])
+            .select { |k, _| PROCESSED_REQUEST_LOG_KEYS.include?(k) }
+            .merge(input)
             .merge(PivotProcess.trace_information)
 
           if @log_error_as_string
             attributes[:error] = attributes[:error].to_s if attributes.has_key?(:error)
           end
+
           @logger.info 'Processed request', attributes
         end
 
-        def handle_exception(e, input)
-          @logger.error(e.inspect + "\n" + e.backtrace.join("\n"), PivotProcess.trace_information)
+        def handle_exception(exception, input)
+          message = [exception.inspect, *exception.backtrace].join("\n")
+          metadata = PivotProcess.trace_information.merge(input)
+
+          @logger.error(message, metadata)
+
           if @exception_notifier
-            @exception_notifier.notify_or_ignore(e, cgi_data: ENV.to_hash, parameters: input)
+            @exception_notifier.notify_or_ignore(
+              exception,
+              cgi_data: ENV.to_hash,
+              parameters: input
+            )
           end
-          { success: false, error: e.message }
+
+          { success: false, error: exception.message }
         end
       end
 

@@ -99,46 +99,55 @@ describe ProcessHandler::PivotProcess do
     end
 
     describe 'when service responds with an error object' do
-      let(:result) { { success: false, error: {error: 'hey', message: 'message' } } }
+      let(:result) { { success: false, error: { error: 'hey', message: 'message' } } }
+      let(:input) { { type: :update, value: 42 } }
 
       before do
         expect(service).to receive(:call).with(input) { result }
       end
 
-      it 'logs the message as an object' do
-        expect(logger).to receive(:info).with("Received request", {})
+      it 'logs the message as an object and includes input' do
+        expect(logger).to receive(:info).with('Received request', input)
+
         expect(logger).to receive(:info)
           .with(
-            "Processed request",
-            { success: false, error: {error: 'hey', message: 'message'}, type: nil }
+            'Processed request',
+            {
+              success: false,
+              error: { error: 'hey', message: 'message' }
+            }.merge(input)
           )
-        subject()
+
+        subject
       end
 
       describe 'when log_error_as_string' do
         let(:log_error_as_string) { true }
 
-        it 'logs the message as string' do
-          expect(logger).to receive(:info).with("Received request", {})
+        it 'logs the message as string and includes input' do
+          expect(logger).to receive(:info).with('Received request', input)
+
           expect(logger).to receive(:info)
             .with(
-              "Processed request",
-              { success: false, error: "{:error=>\"hey\", :message=>\"message\"}", type: nil }
+              'Processed request',
+              {
+                success: false,
+                error: '{:error=>"hey", :message=>"message"}'
+              }.merge(input)
             )
-          subject()
+
+          subject
         end
       end
     end
 
     shared_examples 'an error_handler' do
-
       it 'logs error' do
-        expect(logger).to receive(:error)
-        subject()
+        expect(logger).to receive(:error).with(an_instance_of(String), input)
+        subject
       end
 
       describe 'with exception_notifier' do
-
         let(:exception_notifier) { double('Airbrake') }
 
         before do
@@ -147,16 +156,15 @@ describe ProcessHandler::PivotProcess do
 
         it 'triggers exception_notifier' do
           expect(exception_notifier).to receive(:notify_or_ignore)
-          subject()
+          subject
         end
       end
-
     end
 
     describe 'when service raises exception' do
-
+      let(:input) { { type: :update, value: 42 } }
       let(:result) { { success: false, error: exception } }
-      let(:exception) { "what an unexpected exception!" }
+      let(:exception) { 'what an unexpected exception!' }
 
       before do
         expect(service).to receive(:call).with(input) { raise exception }
@@ -164,11 +172,10 @@ describe ProcessHandler::PivotProcess do
 
       it 'acks the message properly' do
         expect(handler).to receive(:error).with(result)
-        subject()
+        subject
       end
 
       it_behaves_like 'an error_handler'
-
     end
 
     describe 'when result is fulfillable' do
