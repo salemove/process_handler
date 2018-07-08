@@ -12,20 +12,6 @@ module Salemove
 
       attr_reader :process_monitor, :exception_notifier
 
-      def self.tracing_supported?
-        defined?(Freddy) &&
-          Freddy.respond_to?(:trace) &&
-          Freddy.trace.context.respond_to?(:to_h)
-      end
-
-      def self.trace_information
-        if tracing_supported?
-          {trace: Freddy.trace.context.to_h}
-        else
-          {}
-        end
-      end
-
       def initialize(freddy:,
                      logger:,
                      statsd:,
@@ -117,7 +103,7 @@ module Salemove
         end
 
         def delegate_to_service(input)
-          @logger.info 'Received request', PivotProcess.trace_information.merge(input)
+          @logger.info 'Received request', input
           @benchmarker.call(input) { @service.call(input) }
         rescue StandardError => exception
           handle_exception(exception, input)
@@ -125,9 +111,7 @@ module Salemove
 
         def handle_exception(exception, input)
           message = [exception.inspect, *exception.backtrace].join("\n")
-          metadata = PivotProcess.trace_information.merge(input)
-
-          @logger.error(message, metadata)
+          @logger.error(message, input)
 
           if @exception_notifier
             @exception_notifier.notify_or_ignore(
@@ -187,7 +171,7 @@ module Salemove
         end
 
         def handle_request(input)
-          @logger.info 'Received request', PivotProcess.trace_information.merge(input)
+          @logger.info 'Received request', input
           if input.has_key?(:ping)
             { success: true, pong: 'pong' }
           else
@@ -211,7 +195,6 @@ module Salemove
           attributes = result
             .select { |k, _| PROCESSED_REQUEST_LOG_KEYS.include?(k) }
             .merge(input)
-            .merge(PivotProcess.trace_information)
 
           if @log_error_as_string
             attributes[:error] = attributes[:error].to_s if attributes.has_key?(:error)
@@ -222,9 +205,7 @@ module Salemove
 
         def handle_exception(exception, input)
           message = [exception.inspect, *exception.backtrace].join("\n")
-          metadata = PivotProcess.trace_information.merge(input)
-
-          @logger.error(message, metadata)
+          @logger.error(message, input)
 
           if @exception_notifier
             @exception_notifier.notify_or_ignore(
