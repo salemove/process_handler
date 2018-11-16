@@ -18,7 +18,8 @@ Gem::Specification.new do |spec|
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
   spec.require_paths = ["lib"]
 
-  spec.add_dependency 'airbrake', '~> 4.3'
+  spec.add_dependency 'airbrake', '~> 7.4'
+  spec.add_dependency 'timers', '~> 4.1.2'
   spec.add_dependency 'sucker_punch', '~> 1.1' # for async airbrake notifications
   spec.add_dependency 'growl'
   spec.add_dependency 'terminal-notifier'

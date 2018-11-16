@@ -113,13 +113,7 @@ module Salemove
           message = [exception.inspect, *exception.backtrace].join("\n")
           @logger.error(message, input)
 
-          if @exception_notifier
-            @exception_notifier.notify_or_ignore(
-              exception,
-              cgi_data: ENV.to_hash,
-              parameters: input
-            )
-          end
+          @exception_notifier.notify_or_ignore(exception, input) if @exception_notifier
         end
       end
 
@@ -207,13 +201,7 @@ module Salemove
           message = [exception.inspect, *exception.backtrace].join("\n")
           @logger.error(message, input)
 
-          if @exception_notifier
-            @exception_notifier.notify_or_ignore(
-              exception,
-              cgi_data: ENV.to_hash,
-              parameters: input
-            )
-          end
+          @exception_notifier.notify_or_ignore(exception, input) if @exception_notifier
 
           { success: false, error: exception.message }
         end
