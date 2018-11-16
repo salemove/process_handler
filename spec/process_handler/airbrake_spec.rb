@@ -1,63 +1,61 @@
 require 'spec_helper'
-require 'airbrake'
-require 'airbrake/notice'
 require 'salemove/process_handler/notifier_factory'
+require 'securerandom'
 
 describe 'Airbrake configuration' do
-
-  let (:notice) { Airbrake::Notice.new(notice_args.merge(custom_notice_args)) }
-  let (:environment_name) { 'SOME_ENVIRONMENT' }
-  let (:notifier_factory_conf) { {:type => 'airbrake',
-                                  :host => 'localhost',
-                                  :api_key => 'abc123',
-                                  :environment_name => environment_name} }
-  let (:airbrake) { ProcessHandler::NotifierFactory.get_notifier('Process name', notifier_factory_conf) }
-  # Notice needs Airbrake configuration merged with :exception for creating the exception notification
-  let (:notice_args) { {:exception => Exception.new}.merge(airbrake.configuration) }
-  let (:custom_notice_args) { {} }
-  let (:filtered) { '[FILTERED]' }
-
-  # Uses Airbrake configuration's 'params_whitelist_filters' param for filtering
-  describe 'whitelist filtering' do
-
-    let (:custom_notice_args) {
-      {
-        :params_filters => [], # Remove blacklist to test whitelist
-        :parameters => {
-          'API_PORT_80_TCP_PROTO' => 'tcp',
-          'HOME' => '/home/sm',
-          'SECRET_PASS' => 'Parool123',
-          'SOME_PROTO_KEY' => 'value',
-          'PROTO_KEY' => 'abc123'
-        },
-        :cgi_data => {
-          'HTTP_HOST' => 'localhost:3001',
-          'RANDOM' => 'value',
-          'HOME' => 'sweet home'
-        }
-      }
+  let(:environment) { 'SOME_ENVIRONMENT' }
+  let(:config) { airbrake_config.merge(type: 'airbrake') }
+  let(:airbrake_config) { base_params }
+  let(:base_params) do
+    {
+      environment: environment,
+      host: 'localhost',
+      project_id: '123456',
+      project_key: 'abc123',
+      ignore_environments: ['dev'],
+      # Airbrake module raises an error when same notifier configured multiple times
+      # Provide a random notifier name for each test case
+      notifier_name: SecureRandom.hex
     }
-
-    it 'allows parameters by regex' do
-      expect(notice[:parameters]['API_PORT_80_TCP_PROTO']).to eq 'tcp'
-      expect(notice[:cgi_data]['HTTP_HOST']).to eq 'localhost:3001'
-    end
-
-    it 'allows parameters by string' do
-      expect(notice[:parameters]['HOME']).to eq '/home/sm'
-      expect(notice[:cgi_data]['HOME']).to eq 'sweet home'
-    end
-
-    it 'filters variables not in whitelist' do
-      expect(notice[:parameters]['SECRET_PASS']).to eq filtered
-      expect(notice[:parameters]['SOME_PROTO_KEY']).to eq filtered
-      expect(notice[:parameters]['PROTO_KEY']).to eq filtered
-      expect(notice[:cgi_data]['RANDOM']).to eq filtered
-    end
-
+  end
+  let(:airbrake) do
+    ProcessHandler::NotifierFactory.get_notifier('Process name', config)
   end
 
-  it 'configures environment_name' do
-    expect(notice[:environment_name]).to eq environment_name
+  context 'when all params set' do
+    it 'does not raise an error' do
+      expect { airbrake }.not_to raise_error
+    end
   end
+
+  context 'when project_id is not a number' do
+    let(:airbrake_config) { base_params.merge(project_id: 'abc') }
+
+    it 'raises error' do
+      expect { airbrake }.to raise_error
+    end
+  end
+
+  context 'when ignore_environments missing' do
+    before { base_params.delete(:ignore_environments) }
+
+    it 'does not raise an error' do
+      expect { airbrake }.not_to raise_error
+    end
+  end
+
+  shared_examples_for 'raises error if config param missing' do |key|
+    context "when #{key} missing" do
+      before { base_params.delete(key) }
+
+      it 'raises error' do
+        expect { airbrake }.to raise_error
+      end
+    end
+  end
+
+  it_behaves_like 'raises error if config param missing', :environment
+  it_behaves_like 'raises error if config param missing', :host
+  it_behaves_like 'raises error if config param missing', :project_id
+  it_behaves_like 'raises error if config param missing', :project_key
 end
