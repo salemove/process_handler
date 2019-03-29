@@ -49,9 +49,9 @@ module Salemove
 
       def spawn_schedule(service, expression:, params:, overlap:)
         if params.empty?
-          @scheduler.repeat expression, {overlap: overlap} { service.call }
+          @scheduler.repeat(expression, {overlap: overlap}) { service.call }
         else
-          @scheduler.repeat expression, {overlap: overlap} { service.call(params) }
+          @scheduler.repeat(expression, {overlap: overlap}) { service.call(params) }
         end
       end
 
