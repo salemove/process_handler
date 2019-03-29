@@ -1,3 +1,4 @@
+require 'logger'
 require 'salemove/process_handler'
 require 'salemove/process_handler/composite_process'
 require 'salemove/process_handler/cron_process'
