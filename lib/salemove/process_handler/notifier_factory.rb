@@ -1,26 +1,8 @@
-require 'airbrake'
-require 'growl'
-require 'terminal-notifier'
-
 module Salemove
   module ProcessHandler
     class NotifierFactory
-
       def self.get_notifier(process_name, conf)
         if conf && conf[:type] == 'airbrake'
-          notifier_name = conf[:notifier_name] || :default
-          Airbrake.configure(notifier_name) do |airbrake|
-            airbrake.environment = conf.fetch(:environment)
-            airbrake.host = conf.fetch(:host)
-            airbrake.project_id = conf.fetch(:project_id)
-            airbrake.project_key = conf.fetch(:project_key)
-            airbrake.ignore_environments = conf[:ignore_environments] if conf[:ignore_environments]
-            airbrake.whitelist_keys = [
-              /_HOST$/, /_TCP$/, /_UDP$/, /_PROTO$/, /_ADDR$/, 'PWD',
-              'GEM_HOME', 'PATH', 'SERVICE_NAME', 'RUBY_MAJOR', 'RUBY_VERSION',
-              'RACK_ENV', 'RUN_ENV', 'HOME', 'RUBYGEMS_VERSION', 'BUNDLER_VERSION'
-            ]
-          end
           AirbrakeNotifier.new
         elsif conf && conf[:type] == 'growl'
           GrowlNotifier.new(process_name)

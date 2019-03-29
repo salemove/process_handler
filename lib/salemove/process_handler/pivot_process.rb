@@ -1,5 +1,6 @@
 require 'benchmark'
 require 'securerandom'
+require 'timeout'
 require_relative 'process_monitor'
 require_relative 'notifier_factory'
 
