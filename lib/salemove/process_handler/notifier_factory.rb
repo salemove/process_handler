@@ -2,11 +2,16 @@ module Salemove
   module ProcessHandler
     class NotifierFactory
       def self.get_notifier(process_name, conf)
-        if conf && conf[:type] == 'airbrake'
+        return nil unless conf
+
+        case conf[:type]
+        when 'airbrake'
           AirbrakeNotifier.new
-        elsif conf && conf[:type] == 'growl'
+        when 'sentry'
+          SentryNotifier.new
+        when 'growl'
           GrowlNotifier.new(process_name)
-        elsif conf && conf[:type] == 'terminal-notifier'
+        when 'terminal-notifier'
           TerminalNotifierWrapper.new(process_name)
         end
       end
@@ -15,6 +20,12 @@ module Salemove
     class AirbrakeNotifier
       def notify_or_ignore(error, params)
         Airbrake.notify(error, params)
+      end
+    end
+
+    class SentryNotifier
+      def notify_or_ignore(error, params)
+        Raven.capture_exception(error, extra: params)
       end
     end
 
