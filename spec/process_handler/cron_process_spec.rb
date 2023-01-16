@@ -42,7 +42,7 @@ describe ProcessHandler::CronProcess do
   end
 
   describe 'scheduler' do
-    let(:process) { ProcessHandler::CronProcess.new(scheduler_options: {frequency: 0.1}) }
+    let(:process) { ProcessHandler::CronProcess.new(**{scheduler_options: {frequency: 0.1}}) }
     let(:messages) { [] }
     let(:queue) { Queue.new }
 
@@ -60,7 +60,7 @@ describe ProcessHandler::CronProcess do
   end
 
   describe 'exception handler' do
-    let(:process) { ProcessHandler::CronProcess.new(params) }
+    let(:process) { ProcessHandler::CronProcess.new(**params) }
     let(:params) {{ notifier_factory: notifier_factory,
       scheduler_options: {frequency: 0.2} }}
     let(:notifier_factory) { double('NotifierFactory') }
