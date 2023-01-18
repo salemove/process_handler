@@ -177,7 +177,7 @@ module Salemove
         end
 
         def delegate_to_service(input)
-          result = @benchmarker.call(input) { @service.call(input) }
+          result = @benchmarker.call(input) { @service.call(**input) }
 
           unless result.respond_to?(:fulfilled?)
             log_processed_request(input, result)

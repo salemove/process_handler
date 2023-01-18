@@ -42,7 +42,7 @@ module Salemove
       def spawn(service, blocking: true)
         @process_monitor.start
         @schedules.each do |schedule|
-          spawn_schedule(service, schedule)
+          spawn_schedule(service, **schedule)
         end
         @scheduler.join if blocking
       end
