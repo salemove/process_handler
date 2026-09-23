@@ -1,7 +1,7 @@
 source 'https://rubygems.org'
 
 gem 'rake'
-gem 'rufus-scheduler', '~> 3.2.1'
+gem 'rufus-scheduler', '~> 3.9.2'
 gem 'logasm'
 
 group :test do
