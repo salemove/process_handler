@@ -7,8 +7,6 @@ module Salemove
         case conf[:type]
         when 'sentry'
           SentryNotifier.new
-        when 'growl'
-          GrowlNotifier.new(process_name)
         when 'terminal-notifier'
           TerminalNotifierWrapper.new(process_name)
         end
@@ -18,16 +16,6 @@ module Salemove
     class SentryNotifier
       def notify_or_ignore(error, params)
         Raven.capture_exception(error, extra: params)
-      end
-    end
-
-    class GrowlNotifier
-      def initialize(process_name)
-        @process_name = process_name
-      end
-
-      def notify_or_ignore(error, _)
-        Growl.notify(error.message, title: "Error in #{@process_name}")
       end
     end
 
