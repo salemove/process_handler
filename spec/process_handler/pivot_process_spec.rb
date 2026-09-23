@@ -38,12 +38,27 @@ describe ProcessHandler::PivotProcess do
   end
 
   describe 'responding services' do
+    # Declares keywords only, so a positional hash raises ArgumentError: the
+    # request path must pass the input as keywords, which consumers' services
+    # such as `def call(type:, **input)` require.
     class ResultService
       QUEUE = 'Dummy'
+
+      attr_reader :inputs
+
+      def initialize(&respond)
+        @respond = respond
+        @inputs = []
+      end
+
+      def call(**input)
+        @inputs << input
+        @respond.call
+      end
     end
 
     subject { process.spawn(service) }
-    let(:service) { ResultService.new }
+    let(:service) { ResultService.new { result } }
 
     let(:input) {{}}
     let(:result) { {success: true, result: 'RESULT'} }
@@ -63,15 +78,16 @@ describe ProcessHandler::PivotProcess do
     before do
       expect_message
       expect_handler_thread_to_behave
-      allow(service).to receive(:call).with(input) { result }
     end
 
     describe 'when service responds correctly' do
 
       it 'can be executed with logger' do
         expect(handler).to receive(:success).with(result)
-        expect(service).to receive(:call).with(input)
+
         subject()
+
+        expect(service.inputs).to eq([{}])
       end
 
       it 'records execution time' do
@@ -88,10 +104,6 @@ describe ProcessHandler::PivotProcess do
     describe 'when service responds with an error' do
       let(:result) { { success: false, error: 'hey' } }
 
-      before do
-        expect(service).to receive(:call).with(input) { result }
-      end
-
       it 'acks the message properly' do
         expect(handler).to receive(:error).with(result)
         subject()
@@ -101,10 +113,6 @@ describe ProcessHandler::PivotProcess do
     describe 'when service responds with an error object' do
       let(:result) { { success: false, error: { error: 'hey', message: 'message' } } }
       let(:input) { { type: :update, value: 42 } }
-
-      before do
-        expect(service).to receive(:call).with(input) { result }
-      end
 
       it 'logs the message as an object and includes input' do
         expect(logger).to receive(:info).with('Received request', input)
@@ -132,7 +140,8 @@ describe ProcessHandler::PivotProcess do
               'Processed request',
               {
                 success: false,
-                error: '{:error=>"hey", :message=>"message"}'
+                # Hash#inspect changed format in Ruby 3.4
+                error: { error: 'hey', message: 'message' }.to_s
               }.merge(input)
             )
 
@@ -165,10 +174,7 @@ describe ProcessHandler::PivotProcess do
       let(:input) { { type: :update, value: 42 } }
       let(:result) { { success: false, error: exception } }
       let(:exception) { 'what an unexpected exception!' }
-
-      before do
-        expect(service).to receive(:call).with(input) { raise exception }
-      end
+      let(:service) { ResultService.new { raise exception } }
 
       it 'acks the message properly' do
         expect(handler).to receive(:error).with(result)
@@ -223,7 +229,7 @@ describe ProcessHandler::PivotProcess do
         end
 
         it 'responds with timeout error' do
-          expect(handler).to receive(:error).with(success: false, error: "Fulfillable response was not fulfilled")
+          expect(handler).to receive(:error).with({ success: false, error: "Fulfillable response was not fulfilled" })
           subject
         end
 

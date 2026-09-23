@@ -12,6 +12,7 @@ Gem::Specification.new do |spec|
   spec.summary       = %q{}
   spec.homepage      = ''
   spec.license       = 'Private'
+  spec.required_ruby_version = '>= 3.3'
 
   spec.files         = `git ls-files`.split($/)
   spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
