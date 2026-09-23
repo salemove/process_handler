@@ -5,8 +5,6 @@ module Salemove
         return nil unless conf
 
         case conf[:type]
-        when 'airbrake'
-          AirbrakeNotifier.new
         when 'sentry'
           SentryNotifier.new
         when 'growl'
@@ -14,12 +12,6 @@ module Salemove
         when 'terminal-notifier'
           TerminalNotifierWrapper.new(process_name)
         end
-      end
-    end
-
-    class AirbrakeNotifier
-      def notify_or_ignore(error, params)
-        Airbrake.notify(error, params)
       end
     end
 
