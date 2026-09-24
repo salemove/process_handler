@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    process_handler (4.1.0)
+    process_handler (5.0.0)
       benchmark
       logger
 
