@@ -2,7 +2,6 @@ require 'rubygems'
 require 'bundler'
 Bundler.setup
 
-require 'pry' # for debugging
 require 'rspec'
 require 'salemove/process_handler'
 
